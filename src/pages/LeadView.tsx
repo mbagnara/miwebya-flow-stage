@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadTimeline } from "@/components/LeadTimeline";
+import { PipelineProgress } from "@/components/PipelineProgress";
 import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -178,6 +179,18 @@ const LeadView = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Columna izquierda: Datos del lead */}
           <div className="space-y-6">
+            {/* Pipeline Progress Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Pipeline Visual</CardTitle>
+                <CardDescription>
+                  Seguimiento completo del proceso de venta
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PipelineProgress currentStateId={lead.pipelineState} />
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
