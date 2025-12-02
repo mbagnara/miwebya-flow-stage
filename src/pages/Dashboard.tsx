@@ -7,6 +7,7 @@ import { LeadsTable } from "@/components/LeadsTable";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, GitBranch } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -15,6 +16,8 @@ const Dashboard = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [temperatureFilter, setTemperatureFilter] = useState<LeadTemperature | "all">("all");
+  const [itemsPerPage, setItemsPerPage] = useState<number>(20);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadLeads = async () => {
     setLoading(true);
@@ -33,6 +36,18 @@ const Dashboard = () => {
   const filteredLeads = temperatureFilter === "all"
     ? leads
     : leads.filter(lead => lead.temperature === temperatureFilter);
+
+  // Paginación
+  const totalLeads = filteredLeads.length;
+  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(totalLeads / itemsPerPage);
+  const startIndex = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex = itemsPerPage === -1 ? totalLeads : startIndex + itemsPerPage;
+  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+
+  // Reset a página 1 cuando cambia el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [temperatureFilter, itemsPerPage]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -137,12 +152,64 @@ const Dashboard = () => {
           </Button>
         </div>
 
+        {/* Contador y selector de paginación */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm text-muted-foreground">
+            Mostrando <span className="font-semibold text-foreground">{paginatedLeads.length}</span> de{" "}
+            <span className="font-semibold text-foreground">{totalLeads}</span> leads
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Mostrar:</span>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={(value) => setItemsPerPage(Number(value))}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="-1">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+            {totalPages > 1 && (
+              <>
+                <span className="text-sm text-muted-foreground mx-2">|</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">
             Cargando leads...
           </div>
         ) : (
-          <LeadsTable leads={filteredLeads} onLeadUpdated={loadLeads} />
+          <LeadsTable leads={paginatedLeads} onLeadUpdated={loadLeads} />
         )}
       </div>
     </div>
