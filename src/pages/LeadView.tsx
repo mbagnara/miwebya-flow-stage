@@ -77,27 +77,6 @@ const LeadView = () => {
     loadLeadData();
   };
 
-  const handleSaveMessage = async () => {
-    if (!lead || !editableMessage.trim()) return;
-
-    // Registrar interacción sin avanzar el pipeline
-    const newInteraction: Interaction = {
-      id: `int-${Date.now()}`,
-      leadId: lead.id,
-      message: editableMessage.trim(),
-      createdAt: new Date().toISOString(),
-      direction: "outgoing"
-    };
-    await dataRepository.addInteraction(newInteraction);
-
-    toast({
-      title: "Mensaje guardado",
-      description: "El mensaje ha sido registrado sin avanzar el estado"
-    });
-
-    loadLeadData();
-  };
-
   const handleAdvanceState = async () => {
     if (!lead) return;
 
@@ -235,17 +214,9 @@ const LeadView = () => {
                   >
                     Restablecer mensaje
                   </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={handleSaveMessage}
-                    className="w-full"
-                    disabled={!editableMessage.trim()}
-                  >
-                    Guardar mensaje
-                  </Button>
                 </div>
 
-                <Button 
+                <Button
                   className="w-full gap-2"
                   onClick={handleAdvanceState}
                   disabled={!canAdvance}
