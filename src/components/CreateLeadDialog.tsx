@@ -14,10 +14,18 @@ interface CreateLeadDialogProps {
   onLeadCreated: () => void;
   lead?: Lead;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const CreateLeadDialog = ({ onLeadCreated, lead, trigger }: CreateLeadDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const CreateLeadDialog = ({ 
+  onLeadCreated, 
+  lead, 
+  trigger,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange 
+}: CreateLeadDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -28,6 +36,10 @@ export const CreateLeadDialog = ({ onLeadCreated, lead, trigger }: CreateLeadDia
   const [businessTypes, setBusinessTypes] = useState<string[]>([]);
 
   const isEditMode = !!lead;
+  
+  // Use external control if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   useEffect(() => {
     const loadOptions = async () => {

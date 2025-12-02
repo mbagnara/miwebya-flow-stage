@@ -21,11 +21,22 @@ import { toast } from "@/hooks/use-toast";
 interface DeleteLeadDialogProps {
   lead: Lead;
   onLeadDeleted: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const DeleteLeadDialog = ({ lead, onLeadDeleted }: DeleteLeadDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const DeleteLeadDialog = ({ 
+  lead, 
+  onLeadDeleted,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange 
+}: DeleteLeadDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+
+  // Use external control if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const baseSetOpen = externalOnOpenChange || setInternalOpen;
 
   const handleDelete = async () => {
     if (confirmText !== "Eliminar") {
@@ -45,12 +56,12 @@ export const DeleteLeadDialog = ({ lead, onLeadDeleted }: DeleteLeadDialogProps)
     });
 
     setConfirmText("");
-    setOpen(false);
+    baseSetOpen(false);
     onLeadDeleted();
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
+    baseSetOpen(newOpen);
     if (!newOpen) {
       setConfirmText("");
     }
