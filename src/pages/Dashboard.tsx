@@ -38,7 +38,7 @@ const Dashboard = () => {
             Cargando leads...
           </div>
         ) : (
-          <LeadsTable leads={leads} />
+          <LeadsTable leads={leads} onLeadUpdated={loadLeads} />
         )}
       </div>
     </div>
