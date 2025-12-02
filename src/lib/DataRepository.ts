@@ -63,6 +63,36 @@ export class DataRepository {
     return data ? JSON.parse(data) : [];
   }
 
+  // EXPORT / IMPORT
+  async exportAllData(): Promise<{ leads: Lead[]; interactions: Interaction[]; exportDate: string }> {
+    const leads = await this.getLeads();
+    const interactions = await this.getAllInteractions();
+    return {
+      leads,
+      interactions,
+      exportDate: new Date().toISOString()
+    };
+  }
+
+  async importAllData(data: { leads: Lead[]; interactions: Interaction[] }): Promise<void> {
+    // Borrar todos los datos existentes
+    localStorage.removeItem(LEADS_KEY);
+    localStorage.removeItem(INTERACTIONS_KEY);
+
+    // Importar los nuevos datos
+    if (data.leads && data.leads.length > 0) {
+      localStorage.setItem(LEADS_KEY, JSON.stringify(data.leads));
+    }
+    if (data.interactions && data.interactions.length > 0) {
+      localStorage.setItem(INTERACTIONS_KEY, JSON.stringify(data.interactions));
+    }
+  }
+
+  async clearAllData(): Promise<void> {
+    localStorage.removeItem(LEADS_KEY);
+    localStorage.removeItem(INTERACTIONS_KEY);
+  }
+
   // SEED DATA
   async seedFakeData(): Promise<void> {
     const existingLeads = await this.getLeads();

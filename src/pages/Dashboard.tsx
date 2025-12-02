@@ -8,8 +8,19 @@ import { PipelineProgress } from "@/components/PipelineProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, GitBranch } from "lucide-react";
+import { Settings, GitBranch, Download, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -18,6 +29,8 @@ const Dashboard = () => {
   const [temperatureFilter, setTemperatureFilter] = useState<LeadTemperature | "all">("all");
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const loadLeads = async () => {
     setLoading(true);
@@ -49,6 +62,76 @@ const Dashboard = () => {
     setCurrentPage(1);
   }, [temperatureFilter, itemsPerPage]);
 
+  const handleExportLeads = async () => {
+    try {
+      const data = await dataRepository.exportAllData();
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `miwebya-leads-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Exportación exitosa",
+        description: `Se exportaron ${data.leads.length} leads con sus interacciones`
+      });
+    } catch (error) {
+      toast({
+        title: "Error al exportar",
+        description: "No se pudo exportar los datos",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleImportLeads = async () => {
+    if (!importFile) return;
+
+    try {
+      const text = await importFile.text();
+      const data = JSON.parse(text);
+
+      if (!data.leads || !Array.isArray(data.leads)) {
+        toast({
+          title: "Error en el archivo",
+          description: "El archivo no tiene el formato correcto",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      await dataRepository.importAllData(data);
+      await loadLeads();
+      
+      setShowImportDialog(false);
+      setImportFile(null);
+
+      toast({
+        title: "Importación exitosa",
+        description: `Se importaron ${data.leads.length} leads correctamente`
+      });
+    } catch (error) {
+      toast({
+        title: "Error al importar",
+        description: "No se pudo leer el archivo o el formato es incorrecto",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImportFile(file);
+      setShowImportDialog(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
@@ -58,6 +141,47 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">Gestiona tus leads y pipeline de ventas</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleExportLeads}
+              className="hidden sm:flex"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => document.getElementById('import-file-input')?.click()}
+              className="hidden sm:flex"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+            </Button>
+            <input
+              id="import-file-input"
+              type="file"
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleExportLeads}
+              className="sm:hidden"
+              title="Exportar leads"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => document.getElementById('import-file-input')?.click()}
+              className="sm:hidden"
+              title="Importar leads"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => navigate("/config/pipeline")}
@@ -212,6 +336,42 @@ const Dashboard = () => {
           <LeadsTable leads={paginatedLeads} onLeadUpdated={loadLeads} />
         )}
       </div>
+
+      {/* Import Confirmation Dialog */}
+      <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmar importación?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Esta acción <strong>eliminará todos los leads existentes</strong> y sus datos
+                (interacciones, timeline, etc.) y los reemplazará con los datos del archivo:
+              </p>
+              <p className="font-semibold text-foreground">
+                {importFile?.name}
+              </p>
+              <p className="text-destructive">
+                ⚠️ Esta acción no se puede deshacer. Asegúrate de haber exportado tus datos
+                actuales antes de continuar.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setImportFile(null);
+              setShowImportDialog(false);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleImportLeads}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Importar y reemplazar todo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
