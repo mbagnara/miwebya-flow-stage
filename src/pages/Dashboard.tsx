@@ -7,7 +7,7 @@ import { LeadsTable } from "@/components/LeadsTable";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings } from "lucide-react";
+import { Settings, GitBranch } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
@@ -43,6 +43,22 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">Gestiona tus leads y pipeline de ventas</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/config/pipeline")}
+              className="hidden sm:flex"
+            >
+              <GitBranch className="h-4 w-4 mr-2" />
+              Ver Configuración del Pipeline
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigate("/config/pipeline")}
+              className="sm:hidden"
+            >
+              <GitBranch className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="icon" onClick={() => navigate("/settings")}>
               <Settings className="h-4 w-4" />
             </Button>

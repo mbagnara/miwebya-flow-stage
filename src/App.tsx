@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import LeadView from "./pages/LeadView";
 import Settings from "./pages/Settings";
+import PipelineConfig from "./pages/PipelineConfig";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/lead/:id" element={<LeadView />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/config/pipeline" element={<PipelineConfig />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
