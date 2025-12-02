@@ -6,6 +6,7 @@ import { getPipelineState, getNextState } from "@/lib/pipeline";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -16,6 +17,8 @@ const LeadView = () => {
   const [lead, setLead] = useState<Lead | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editableMessage, setEditableMessage] = useState("");
+  const [incomingMessage, setIncomingMessage] = useState("");
 
   const loadLeadData = async () => {
     if (!id) return;
@@ -35,10 +38,42 @@ const LeadView = () => {
     loadLeadData();
   }, [id]);
 
+  useEffect(() => {
+    if (lead) {
+      const currentState = getPipelineState(lead.pipelineState);
+      setEditableMessage(currentState?.recommendedMessage || "");
+    }
+  }, [lead]);
+
+  const handleResetMessage = () => {
+    const currentState = getPipelineState(lead?.pipelineState || "");
+    setEditableMessage(currentState?.recommendedMessage || "");
+  };
+
+  const handleSaveIncomingMessage = async () => {
+    if (!lead || !incomingMessage.trim()) return;
+
+    const newInteraction: Interaction = {
+      id: `int-${Date.now()}`,
+      leadId: lead.id,
+      message: incomingMessage.trim(),
+      createdAt: new Date().toISOString(),
+      direction: "incoming"
+    };
+    await dataRepository.addInteraction(newInteraction);
+
+    toast({
+      title: "Respuesta guardada",
+      description: "La respuesta del lead ha sido registrada"
+    });
+
+    setIncomingMessage("");
+    loadLeadData();
+  };
+
   const handleAdvanceState = async () => {
     if (!lead) return;
 
-    const currentState = getPipelineState(lead.pipelineState);
     const nextState = getNextState(lead.pipelineState);
 
     if (!nextState) {
@@ -50,12 +85,13 @@ const LeadView = () => {
       return;
     }
 
-    // Registrar interacción con mensaje recomendado
+    // Registrar interacción con el mensaje del textarea (puede ser editado)
     const newInteraction: Interaction = {
       id: `int-${Date.now()}`,
       leadId: lead.id,
-      message: currentState?.recommendedMessage || "",
-      createdAt: new Date().toISOString()
+      message: editableMessage,
+      createdAt: new Date().toISOString(),
+      direction: "outgoing"
     };
     await dataRepository.addInteraction(newInteraction);
 
@@ -153,14 +189,26 @@ const LeadView = () => {
                   </Badge>
                 </div>
 
-                {currentState && (
-                  <div className="bg-muted p-4 rounded-lg">
-                    <p className="text-sm font-medium mb-2">Mensaje recomendado:</p>
-                    <p className="text-sm text-muted-foreground italic">
-                      "{currentState.recommendedMessage}"
-                    </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      Mensaje recomendado:
+                    </label>
+                    <Textarea
+                      value={editableMessage}
+                      onChange={(e) => setEditableMessage(e.target.value)}
+                      className="min-h-[100px] resize-none"
+                    />
                   </div>
-                )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetMessage}
+                    className="w-full"
+                  >
+                    Restablecer mensaje
+                  </Button>
+                </div>
 
                 <Button 
                   className="w-full gap-2"
@@ -186,18 +234,44 @@ const LeadView = () => {
             </Card>
           </div>
 
-          {/* Columna derecha: Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeline de Interacciones</CardTitle>
-              <CardDescription>
-                Historial de mensajes y acciones registradas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <LeadTimeline interactions={interactions} />
-            </CardContent>
-          </Card>
+          {/* Columna derecha: Timeline y respuestas */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Timeline de Interacciones</CardTitle>
+                <CardDescription>
+                  Historial de mensajes y acciones registradas
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <LeadTimeline interactions={interactions} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Registrar respuesta del lead</CardTitle>
+                <CardDescription>
+                  Escribe aquí la respuesta del lead o una nota rápida
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Textarea
+                  value={incomingMessage}
+                  onChange={(e) => setIncomingMessage(e.target.value)}
+                  placeholder="Escribe aquí la respuesta del lead o una nota rápida..."
+                  className="min-h-[80px] resize-none"
+                />
+                <Button
+                  onClick={handleSaveIncomingMessage}
+                  className="w-full"
+                  disabled={!incomingMessage.trim()}
+                >
+                  Guardar respuesta
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
