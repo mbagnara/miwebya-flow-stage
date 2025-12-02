@@ -17,6 +17,9 @@ export interface PipelineState {
   name: string;
   nextStateId?: string;
   recommendedMessage: string;
+  objective?: string;
+  action?: string;
+  advanceCriteria?: string;
 }
 
 export interface Interaction {
