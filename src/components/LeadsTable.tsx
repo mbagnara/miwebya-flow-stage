@@ -9,9 +9,15 @@ import { useNavigate } from "react-router-dom";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
 import { DeleteLeadDialog } from "@/components/DeleteLeadDialog";
 import { PipelineProgress } from "@/components/PipelineProgress";
-import { Pencil } from "lucide-react";
+import { MoreVertical, Pencil, Eye, GitBranch, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { pipelineConfigRepository, PipelineConfigStage } from "@/lib/PipelineConfigRepository";
 
@@ -24,6 +30,8 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
   const navigate = useNavigate();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [pipelineConfig, setPipelineConfig] = useState<PipelineConfigStage[]>([]);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     const config = pipelineConfigRepository.getPipelineConfig();
@@ -120,34 +128,34 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <CreateLeadDialog
-                          lead={lead}
-                          onLeadCreated={onLeadUpdated}
-                          trigger={
-                            <Button variant="outline" size="sm">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          }
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedLead(lead)}
-                        >
-                          Ver Pipeline
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => navigate(`/lead/${lead.id}`)}
-                        >
-                          Ver Lead
-                        </Button>
-                        <DeleteLeadDialog
-                          lead={lead}
-                          onLeadDeleted={onLeadUpdated}
-                        />
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => setEditingLead(lead)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar Lead
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
+                            <GitBranch className="h-4 w-4 mr-2" />
+                            Ver Pipeline
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/lead/${lead.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver Lead
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setDeletingLead(lead)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar Lead
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
@@ -186,6 +194,32 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Lead Dialog */}
+      {editingLead && (
+        <CreateLeadDialog
+          lead={editingLead}
+          onLeadCreated={() => {
+            onLeadUpdated();
+            setEditingLead(null);
+          }}
+          open={!!editingLead}
+          onOpenChange={(open) => !open && setEditingLead(null)}
+        />
+      )}
+
+      {/* Delete Lead Dialog */}
+      {deletingLead && (
+        <DeleteLeadDialog
+          lead={deletingLead}
+          onLeadDeleted={() => {
+            onLeadUpdated();
+            setDeletingLead(null);
+          }}
+          open={!!deletingLead}
+          onOpenChange={(open) => !open && setDeletingLead(null)}
+        />
+      )}
     </Card>
   );
 };
