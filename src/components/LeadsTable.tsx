@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Lead } from "@/types/crm";
 import { getPipelineState } from "@/lib/pipeline";
+import { getTemperatureColor, getTemperatureLabel } from "@/lib/temperature";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -33,6 +34,7 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
             <TableHead>Teléfono</TableHead>
             <TableHead>Ciudad</TableHead>
             <TableHead>Rubro</TableHead>
+            <TableHead>Temperatura</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Creado</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
@@ -41,7 +43,7 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
         <TableBody>
           {leads.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground">
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
                 No hay leads aún. Crea el primero!
               </TableCell>
             </TableRow>
@@ -54,6 +56,11 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
                   <TableCell>{lead.phone}</TableCell>
                   <TableCell>{lead.city || "-"}</TableCell>
                   <TableCell>{lead.businessType || "-"}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={getTemperatureColor(lead.temperature)}>
+                      {getTemperatureLabel(lead.temperature)}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getStateBadgeVariant(lead.pipelineState)}>
                       {state?.name || lead.pipelineState}

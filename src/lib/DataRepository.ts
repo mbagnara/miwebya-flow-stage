@@ -64,7 +64,9 @@ export class DataRepository {
         city: "Buenos Aires",
         businessType: "Restaurante",
         pipelineState: "respondio",
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        temperature: "warm",
+        temperatureManual: false
       },
       {
         id: "lead-2",
@@ -73,7 +75,9 @@ export class DataRepository {
         city: "Córdoba",
         businessType: "Tienda de ropa",
         pipelineState: "videoEnviado",
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        temperature: "warm",
+        temperatureManual: false
       },
       {
         id: "lead-3",
@@ -82,7 +86,9 @@ export class DataRepository {
         city: "Rosario",
         businessType: "Consultora",
         pipelineState: "nuevo",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        temperature: "cold",
+        temperatureManual: false
       }
     ];
 
