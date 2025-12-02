@@ -1,3 +1,5 @@
+export type LeadTemperature = "cold" | "warm" | "hot";
+
 export interface Lead {
   id: string;
   name: string;
@@ -6,6 +8,8 @@ export interface Lead {
   businessType?: string;
   pipelineState: string;
   createdAt: string;
+  temperature: LeadTemperature;
+  temperatureManual: boolean;
 }
 
 export interface PipelineState {

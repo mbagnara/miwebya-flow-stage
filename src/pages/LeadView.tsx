@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Lead, Interaction } from "@/types/crm";
+import { Lead, Interaction, LeadTemperature } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
 import { getPipelineState, getNextState } from "@/lib/pipeline";
+import { updateLeadTemperature } from "@/lib/temperature";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadTimeline } from "@/components/LeadTimeline";
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const LeadView = () => {
@@ -77,6 +79,24 @@ const LeadView = () => {
     loadLeadData();
   };
 
+  const handleTemperatureChange = async (newTemperature: LeadTemperature) => {
+    if (!lead) return;
+
+    const updatedLead: Lead = {
+      ...lead,
+      temperature: newTemperature,
+      temperatureManual: true
+    };
+
+    await dataRepository.updateLead(updatedLead);
+    setLead(updatedLead);
+
+    toast({
+      title: "Temperatura actualizada",
+      description: `El lead ahora es ${newTemperature.toUpperCase()}`
+    });
+  };
+
   const handleAdvanceState = async () => {
     if (!lead) return;
 
@@ -101,8 +121,13 @@ const LeadView = () => {
     };
     await dataRepository.addInteraction(newInteraction);
 
-    // Actualizar estado del lead
-    const updatedLead = { ...lead, pipelineState: nextState.id };
+    // Actualizar estado del lead y temperatura automática
+    let updatedLead = { ...lead, pipelineState: nextState.id };
+    
+    // Actualizar temperatura automáticamente si no es manual
+    const allInteractions = [...interactions, newInteraction];
+    updatedLead = updateLeadTemperature(updatedLead, allInteractions);
+    
     await dataRepository.updateLead(updatedLead);
 
     toast({
@@ -180,6 +205,25 @@ const LeadView = () => {
                     <p>{lead.businessType}</p>
                   </div>
                 )}
+                <div className="pt-4 border-t">
+                  <Label htmlFor="temperature" className="flex items-center gap-2 mb-2">
+                    <Thermometer className="h-4 w-4" />
+                    Temperatura del Lead
+                  </Label>
+                  <Select
+                    value={lead.temperature}
+                    onValueChange={(value) => handleTemperatureChange(value as LeadTemperature)}
+                  >
+                    <SelectTrigger id="temperature">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cold">Cold</SelectItem>
+                      <SelectItem value="warm">Warm</SelectItem>
+                      <SelectItem value="hot">Hot</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
 
