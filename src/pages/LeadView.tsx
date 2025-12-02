@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -19,6 +21,7 @@ const LeadView = () => {
   const [loading, setLoading] = useState(true);
   const [editableMessage, setEditableMessage] = useState("");
   const [incomingMessage, setIncomingMessage] = useState("");
+  const [interactionSource, setInteractionSource] = useState<"lead" | "yo">("lead");
 
   const loadLeadData = async () => {
     if (!id) return;
@@ -53,21 +56,24 @@ const LeadView = () => {
   const handleSaveIncomingMessage = async () => {
     if (!lead || !incomingMessage.trim()) return;
 
+    const direction = interactionSource === "lead" ? "incoming" : "outgoing";
+
     const newInteraction: Interaction = {
       id: `int-${Date.now()}`,
       leadId: lead.id,
       message: incomingMessage.trim(),
       createdAt: new Date().toISOString(),
-      direction: "incoming"
+      direction
     };
     await dataRepository.addInteraction(newInteraction);
 
     toast({
-      title: "Respuesta guardada",
-      description: "La respuesta del lead ha sido registrada"
+      title: "Interacción guardada",
+      description: `La interacción ha sido registrada`
     });
 
     setIncomingMessage("");
+    setInteractionSource("lead");
     loadLeadData();
   };
 
@@ -279,12 +285,29 @@ const LeadView = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Registrar respuesta del lead</CardTitle>
+                <CardTitle>Registrar interacción</CardTitle>
                 <CardDescription>
                   Escribe aquí la respuesta del lead o una nota rápida
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label>¿Quién envía el mensaje?</Label>
+                  <RadioGroup
+                    value={interactionSource}
+                    onValueChange={(value) => setInteractionSource(value as "lead" | "yo")}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="lead" id="lead" />
+                      <Label htmlFor="lead" className="cursor-pointer font-normal">Lead</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yo" id="yo" />
+                      <Label htmlFor="yo" className="cursor-pointer font-normal">Yo</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
                 <Textarea
                   value={incomingMessage}
                   onChange={(e) => setIncomingMessage(e.target.value)}
@@ -296,7 +319,7 @@ const LeadView = () => {
                   className="w-full"
                   disabled={!incomingMessage.trim()}
                 >
-                  Guardar respuesta
+                  Guardar interacción
                 </Button>
               </CardContent>
             </Card>
