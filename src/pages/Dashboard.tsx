@@ -7,8 +7,11 @@ import { LeadsTable } from "@/components/LeadsTable";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Settings } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [temperatureFilter, setTemperatureFilter] = useState<LeadTemperature | "all">("all");
@@ -39,7 +42,12 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold text-foreground">MiWebYa CRM</h1>
             <p className="text-muted-foreground mt-1">Gestiona tus leads y pipeline de ventas</p>
           </div>
-          <CreateLeadDialog onLeadCreated={loadLeads} />
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => navigate("/settings")}>
+              <Settings className="h-4 w-4" />
+            </Button>
+            <CreateLeadDialog onLeadCreated={loadLeads} />
+          </div>
         </div>
 
         {/* Pipeline Overview Card */}
