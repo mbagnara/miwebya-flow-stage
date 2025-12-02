@@ -30,6 +30,18 @@ export class DataRepository {
     }
   }
 
+  async deleteLead(leadId: string): Promise<void> {
+    // Eliminar el lead
+    const leads = await this.getLeads();
+    const filteredLeads = leads.filter(lead => lead.id !== leadId);
+    localStorage.setItem(LEADS_KEY, JSON.stringify(filteredLeads));
+
+    // Eliminar todas las interacciones asociadas
+    const allInteractions = await this.getAllInteractions();
+    const filteredInteractions = allInteractions.filter(interaction => interaction.leadId !== leadId);
+    localStorage.setItem(INTERACTIONS_KEY, JSON.stringify(filteredInteractions));
+  }
+
   // INTERACTIONS
   async addInteraction(interaction: Interaction): Promise<void> {
     const interactions = await this.getInteractionsForLead(interaction.leadId);
