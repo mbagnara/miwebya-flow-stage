@@ -20,4 +20,5 @@ export interface Interaction {
   leadId: string;
   message: string;
   createdAt: string;
+  direction?: "incoming" | "outgoing";
 }
