@@ -6,12 +6,15 @@ import { getPipelineState } from "@/lib/pipeline";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { CreateLeadDialog } from "@/components/CreateLeadDialog";
+import { Pencil } from "lucide-react";
 
 interface LeadsTableProps {
   leads: Lead[];
+  onLeadUpdated: () => void;
 }
 
-export const LeadsTable = ({ leads }: LeadsTableProps) => {
+export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
   const navigate = useNavigate();
 
   const getStateBadgeVariant = (stateId: string) => {
@@ -60,13 +63,24 @@ export const LeadsTable = ({ leads }: LeadsTableProps) => {
                     {format(new Date(lead.createdAt), "dd MMM yyyy", { locale: es })}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => navigate(`/lead/${lead.id}`)}
-                    >
-                      Ver Lead
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <CreateLeadDialog
+                        lead={lead}
+                        onLeadCreated={onLeadUpdated}
+                        trigger={
+                          <Button variant="outline" size="sm">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/lead/${lead.id}`)}
+                      >
+                        Ver Lead
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

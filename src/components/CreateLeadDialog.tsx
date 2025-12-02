@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { Lead } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
 import { toast } from "@/hooks/use-toast";
 
 interface CreateLeadDialogProps {
   onLeadCreated: () => void;
+  lead?: Lead;
+  trigger?: React.ReactNode;
 }
 
-export const CreateLeadDialog = ({ onLeadCreated }: CreateLeadDialogProps) => {
+export const CreateLeadDialog = ({ onLeadCreated, lead, trigger }: CreateLeadDialogProps) => {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -20,6 +22,19 @@ export const CreateLeadDialog = ({ onLeadCreated }: CreateLeadDialogProps) => {
     city: "",
     businessType: ""
   });
+
+  const isEditMode = !!lead;
+
+  useEffect(() => {
+    if (lead) {
+      setFormData({
+        name: lead.name,
+        phone: lead.phone,
+        city: lead.city || "",
+        businessType: lead.businessType || ""
+      });
+    }
+  }, [lead]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,22 +48,41 @@ export const CreateLeadDialog = ({ onLeadCreated }: CreateLeadDialogProps) => {
       return;
     }
 
-    const newLead: Lead = {
-      id: `lead-${Date.now()}`,
-      name: formData.name,
-      phone: formData.phone,
-      city: formData.city,
-      businessType: formData.businessType,
-      pipelineState: "nuevo",
-      createdAt: new Date().toISOString()
-    };
+    if (isEditMode && lead) {
+      // Modo edición: actualizar lead existente
+      const updatedLead: Lead = {
+        ...lead,
+        name: formData.name,
+        phone: formData.phone,
+        city: formData.city,
+        businessType: formData.businessType
+      };
 
-    await dataRepository.saveLead(newLead);
-    
-    toast({
-      title: "Lead creado",
-      description: `${newLead.name} fue agregado exitosamente`
-    });
+      await dataRepository.updateLead(updatedLead);
+      
+      toast({
+        title: "Lead actualizado",
+        description: `${updatedLead.name} fue actualizado exitosamente`
+      });
+    } else {
+      // Modo creación: crear nuevo lead
+      const newLead: Lead = {
+        id: `lead-${Date.now()}`,
+        name: formData.name,
+        phone: formData.phone,
+        city: formData.city,
+        businessType: formData.businessType,
+        pipelineState: "nuevo",
+        createdAt: new Date().toISOString()
+      };
+
+      await dataRepository.saveLead(newLead);
+      
+      toast({
+        title: "Lead creado",
+        description: `${newLead.name} fue agregado exitosamente`
+      });
+    }
 
     setFormData({ name: "", phone: "", city: "", businessType: "" });
     setOpen(false);
@@ -58,14 +92,16 @@ export const CreateLeadDialog = ({ onLeadCreated }: CreateLeadDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Crear Lead
-        </Button>
+        {trigger || (
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Crear Lead
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Lead</DialogTitle>
+          <DialogTitle>{isEditMode ? "Editar Lead" : "Crear Nuevo Lead"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -114,7 +150,7 @@ export const CreateLeadDialog = ({ onLeadCreated }: CreateLeadDialogProps) => {
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Crear Lead</Button>
+            <Button type="submit">{isEditMode ? "Guardar cambios" : "Crear Lead"}</Button>
           </div>
         </form>
       </DialogContent>
