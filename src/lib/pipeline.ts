@@ -4,7 +4,7 @@ export const PIPELINE_STATES: PipelineState[] = [
   {
     id: "nuevo",
     name: "Nuevo",
-    recommendedMessage: "¡Hola! Vi que te interesa tener una web profesional. ¿Te gustaría que te cuente cómo podemos ayudarte?",
+    recommendedMessage: "Hola, ¿como estas? Soy Mario.\nVi tu negocio y note varias oportunidades para mejorar tu presencia en Google y que mas personas te encuentren.\nSi quieres, te grabo un video corto explicandolo de forma sencilla.\n¿Te lo mando?",
     nextStateId: "respondio"
   },
   {
