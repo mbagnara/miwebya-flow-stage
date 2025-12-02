@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Lead, Interaction, LeadTemperature } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
-import { getPipelineState, getNextState } from "@/lib/pipeline";
+import { getPipelineState, getNextState, getPreviousState } from "@/lib/pipeline";
 import { updateLeadTemperature } from "@/lib/temperature";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -160,6 +160,7 @@ const LeadView = () => {
 
   const currentState = getPipelineState(lead.pipelineState);
   const nextState = getNextState(lead.pipelineState);
+  const previousState = getPreviousState(lead.pipelineState);
   const canAdvance = nextState !== undefined;
 
   return (
@@ -232,11 +233,44 @@ const LeadView = () => {
                 <CardTitle>Estado del Pipeline</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Estado actual</p>
-                  <Badge className="text-base px-3 py-1">
-                    {currentState?.name || lead.pipelineState}
-                  </Badge>
+                {/* Pipeline Flow Visualization */}
+                <div className="flex items-center justify-between gap-2 p-4 bg-muted/50 rounded-lg">
+                  <div className="flex-1 text-center">
+                    {previousState ? (
+                      <>
+                        <p className="text-xs text-muted-foreground mb-1">Anterior</p>
+                        <Badge variant="outline" className="text-xs">
+                          {previousState.name}
+                        </Badge>
+                      </>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">—</div>
+                    )}
+                  </div>
+                  
+                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Estado actual</p>
+                    <Badge className="text-sm px-3 py-1">
+                      {currentState?.name || lead.pipelineState}
+                    </Badge>
+                  </div>
+                  
+                  <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  
+                  <div className="flex-1 text-center">
+                    {nextState ? (
+                      <>
+                        <p className="text-xs text-muted-foreground mb-1">Siguiente</p>
+                        <Badge variant="outline" className="text-xs">
+                          {nextState.name}
+                        </Badge>
+                      </>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">Estado final</div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -274,12 +308,6 @@ const LeadView = () => {
                     "Estado final alcanzado"
                   )}
                 </Button>
-
-                {nextState && (
-                  <p className="text-xs text-center text-muted-foreground">
-                    Siguiente estado: {nextState.name}
-                  </p>
-                )}
               </CardContent>
             </Card>
           </div>

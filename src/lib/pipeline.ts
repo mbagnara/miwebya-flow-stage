@@ -64,3 +64,7 @@ export const getNextState = (currentStateId: string): PipelineState | undefined 
   if (!currentState?.nextStateId) return undefined;
   return getPipelineState(currentState.nextStateId);
 };
+
+export const getPreviousState = (currentStateId: string): PipelineState | undefined => {
+  return PIPELINE_STATES.find(state => state.nextStateId === currentStateId);
+};
