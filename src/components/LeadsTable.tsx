@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
+import { DeleteLeadDialog } from "@/components/DeleteLeadDialog";
 import { Pencil } from "lucide-react";
 
 interface LeadsTableProps {
@@ -87,6 +88,10 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
                       >
                         Ver Lead
                       </Button>
+                      <DeleteLeadDialog
+                        lead={lead}
+                        onLeadDeleted={onLeadUpdated}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
