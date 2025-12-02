@@ -6,14 +6,14 @@ import { Lead } from "@/types/crm";
 import { getPipelineState } from "@/lib/pipeline";
 import { getTemperatureColor, getTemperatureLabel } from "@/lib/temperature";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
 import { DeleteLeadDialog } from "@/components/DeleteLeadDialog";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useState, useEffect } from "react";
+import { pipelineConfigRepository, PipelineConfigStage } from "@/lib/PipelineConfigRepository";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -23,6 +23,26 @@ interface LeadsTableProps {
 export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
   const navigate = useNavigate();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [pipelineConfig, setPipelineConfig] = useState<PipelineConfigStage[]>([]);
+
+  useEffect(() => {
+    const config = pipelineConfigRepository.getPipelineConfig();
+    setPipelineConfig(config);
+  }, []);
+
+  const getNextStep = (pipelineStateId: string) => {
+    const stage = pipelineConfig.find(s => s.id === pipelineStateId);
+    return stage?.accion || "-";
+  };
+
+  const getStageTooltip = (pipelineStateId: string) => {
+    const stage = pipelineConfig.find(s => s.id === pipelineStateId);
+    if (!stage) return null;
+    return {
+      objetivo: stage.objetivo,
+      avanzaCuando: stage.avanzaCuando
+    };
+  };
 
   const getStateBadgeVariant = (stateId: string) => {
     if (stateId === "cierreGanado") return "default";
@@ -39,30 +59,29 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
             <TableRow>
               <TableHead>Nombre</TableHead>
               <TableHead>Teléfono</TableHead>
-              <TableHead>Ciudad</TableHead>
-              <TableHead>Rubro</TableHead>
               <TableHead>Temperatura</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Creado</TableHead>
+              <TableHead>Próximo Paso</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No hay leads aún. Crea el primero!
                 </TableCell>
               </TableRow>
             ) : (
               leads.map((lead) => {
                 const state = getPipelineState(lead.pipelineState);
+                const nextStep = getNextStep(lead.pipelineState);
+                const tooltip = getStageTooltip(lead.pipelineState);
+                
                 return (
                   <TableRow key={lead.id}>
                     <TableCell className="font-medium">{lead.name}</TableCell>
                     <TableCell>{lead.phone}</TableCell>
-                    <TableCell>{lead.city || "-"}</TableCell>
-                    <TableCell>{lead.businessType || "-"}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getTemperatureColor(lead.temperature)}>
                         {getTemperatureLabel(lead.temperature)}
@@ -74,7 +93,31 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(lead.createdAt), "dd MMM yyyy", { locale: es })}
+                      {tooltip ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm text-muted-foreground cursor-help">
+                                {nextStep}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="font-semibold text-xs">Objetivo:</p>
+                                  <p className="text-xs">{tooltip.objetivo}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-xs">Avanza cuando:</p>
+                                  <p className="text-xs">{tooltip.avanzaCuando}</p>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{nextStep}</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
