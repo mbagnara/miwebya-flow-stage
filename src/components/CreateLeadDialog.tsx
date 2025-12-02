@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Plus, Pencil } from "lucide-react";
 import { Lead } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
+import { optionsRepository } from "@/lib/OptionsRepository";
+import { OptionCombobox } from "@/components/OptionCombobox";
 import { toast } from "@/hooks/use-toast";
 
 interface CreateLeadDialogProps {
@@ -22,8 +24,21 @@ export const CreateLeadDialog = ({ onLeadCreated, lead, trigger }: CreateLeadDia
     city: "",
     businessType: ""
   });
+  const [cities, setCities] = useState<string[]>([]);
+  const [businessTypes, setBusinessTypes] = useState<string[]>([]);
 
   const isEditMode = !!lead;
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      await optionsRepository.seedDefaultOptions();
+      const loadedCities = await optionsRepository.getCities();
+      const loadedBusinessTypes = await optionsRepository.getBusinessTypes();
+      setCities(loadedCities);
+      setBusinessTypes(loadedBusinessTypes);
+    };
+    loadOptions();
+  }, []);
 
   useEffect(() => {
     if (lead) {
@@ -46,6 +61,14 @@ export const CreateLeadDialog = ({ onLeadCreated, lead, trigger }: CreateLeadDia
         variant: "destructive"
       });
       return;
+    }
+
+    // Guardar ciudad y rubro si son nuevos
+    if (formData.city) {
+      await optionsRepository.saveCity(formData.city);
+    }
+    if (formData.businessType) {
+      await optionsRepository.saveBusinessType(formData.businessType);
     }
 
     if (isEditMode && lead) {
@@ -130,21 +153,23 @@ export const CreateLeadDialog = ({ onLeadCreated, lead, trigger }: CreateLeadDia
           
           <div className="space-y-2">
             <Label htmlFor="city">Ciudad</Label>
-            <Input
-              id="city"
+            <OptionCombobox
+              options={cities}
               value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              placeholder="Ej: Buenos Aires"
+              onValueChange={(value) => setFormData({ ...formData, city: value })}
+              placeholder="Seleccionar o escribir ciudad..."
+              emptyText="Ciudad no encontrada."
             />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="businessType">Rubro</Label>
-            <Input
-              id="businessType"
+            <OptionCombobox
+              options={businessTypes}
               value={formData.businessType}
-              onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
-              placeholder="Ej: Restaurante, Tienda, etc"
+              onValueChange={(value) => setFormData({ ...formData, businessType: value })}
+              placeholder="Seleccionar o escribir rubro..."
+              emptyText="Rubro no encontrado."
             />
           </div>
 
