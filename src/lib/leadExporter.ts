@@ -99,12 +99,15 @@ export function exportLeadToJSONL(lead: Lead, interactions: Interaction[]): stri
 
 export function downloadLeadJSONL(lead: Lead, interactions: Interaction[]): void {
   const jsonlContent = exportLeadToJSONL(lead, interactions);
-  const blob = new Blob([jsonlContent], { type: "application/jsonl" });
+  const blob = new Blob([jsonlContent], { type: "application/json" });
   const url = URL.createObjectURL(blob);
+  
+  const timestamp = format(new Date(), "yyyy-MM-dd:HH-mm-ss");
+  const phoneNumber = lead.phone.replace(/\D/g, "");
   
   const a = document.createElement("a");
   a.href = url;
-  a.download = `lead_${lead.name.replace(/\s+/g, "_").toLowerCase()}_export.jsonl`;
+  a.download = `lead_${timestamp}_${phoneNumber}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
