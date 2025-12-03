@@ -2,8 +2,73 @@ import { Lead, Interaction } from "@/types/crm";
 
 const LEADS_KEY = "miwebya_leads";
 const INTERACTIONS_KEY = "miwebya_interactions";
+const MIGRATION_FLAG = "leads_migrated_v3";
+
+// Mapeo de estados antiguos a nuevos
+const STATE_MIGRATION_MAP: Record<string, string> = {
+  // Estados principales
+  "nuevo": "contacto_inicial",
+  "respondio": "valor_entregado",
+  "videoEnviado": "valor_entregado",
+  "video_enviado": "valor_entregado",
+  "demoOfrecida": "interaccion_activa",
+  "demo_ofrecida": "interaccion_activa",
+  "demoAgendada": "demo_evaluacion",
+  "demo_agendada": "demo_evaluacion",
+  "demoRealizada": "demo_evaluacion",
+  "demo_realizada": "demo_evaluacion",
+  "ofertaEnviada": "demo_evaluacion",
+  "oferta_enviada": "demo_evaluacion",
+  // Estados terminales
+  "cierreGanado": "win",
+  "cierre_ganado": "win",
+  "cierrePerdido": "lost",
+  "cierre_perdido": "lost"
+};
 
 export class DataRepository {
+  constructor() {
+    // Ejecutar migración automática al inicializar
+    this.migrateLeadsToV3();
+  }
+
+  /**
+   * Migra los leads existentes al nuevo sistema de estados V3
+   */
+  private migrateLeadsToV3(): void {
+    const alreadyMigrated = localStorage.getItem(MIGRATION_FLAG);
+    if (alreadyMigrated) return;
+
+    try {
+      const leadsData = localStorage.getItem(LEADS_KEY);
+      if (!leadsData) {
+        localStorage.setItem(MIGRATION_FLAG, 'true');
+        return;
+      }
+
+      const leads: Lead[] = JSON.parse(leadsData);
+      let migratedCount = 0;
+
+      const migratedLeads = leads.map(lead => {
+        const newState = STATE_MIGRATION_MAP[lead.pipelineState];
+        if (newState) {
+          migratedCount++;
+          return { ...lead, pipelineState: newState };
+        }
+        return lead;
+      });
+
+      if (migratedCount > 0) {
+        localStorage.setItem(LEADS_KEY, JSON.stringify(migratedLeads));
+        console.log(`Migración V3 completada: ${migratedCount} leads actualizados`);
+      }
+
+      localStorage.setItem(MIGRATION_FLAG, 'true');
+    } catch (error) {
+      console.error("Error durante migración V3:", error);
+    }
+  }
+
   // LEADS
   async getLeads(): Promise<Lead[]> {
     const data = localStorage.getItem(LEADS_KEY);
@@ -31,12 +96,10 @@ export class DataRepository {
   }
 
   async deleteLead(leadId: string): Promise<void> {
-    // Eliminar el lead
     const leads = await this.getLeads();
     const filteredLeads = leads.filter(lead => lead.id !== leadId);
     localStorage.setItem(LEADS_KEY, JSON.stringify(filteredLeads));
 
-    // Eliminar todas las interacciones asociadas
     const allInteractions = await this.getAllInteractions();
     const filteredInteractions = allInteractions.filter(interaction => interaction.leadId !== leadId);
     localStorage.setItem(INTERACTIONS_KEY, JSON.stringify(filteredInteractions));
@@ -75,11 +138,9 @@ export class DataRepository {
   }
 
   async importAllData(data: { leads: Lead[]; interactions: Interaction[] }): Promise<void> {
-    // Borrar todos los datos existentes
     localStorage.removeItem(LEADS_KEY);
     localStorage.removeItem(INTERACTIONS_KEY);
 
-    // Importar los nuevos datos
     if (data.leads && data.leads.length > 0) {
       localStorage.setItem(LEADS_KEY, JSON.stringify(data.leads));
     }
@@ -105,7 +166,7 @@ export class DataRepository {
         phone: "+54 11 2345-6789",
         city: "Buenos Aires",
         businessType: "Restaurante",
-        pipelineState: "respondio",
+        pipelineState: "valor_entregado",
         createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         temperature: "warm",
         temperatureManual: false
@@ -116,7 +177,7 @@ export class DataRepository {
         phone: "+54 11 3456-7890",
         city: "Córdoba",
         businessType: "Tienda de ropa",
-        pipelineState: "videoEnviado",
+        pipelineState: "interaccion_activa",
         createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
         temperature: "warm",
         temperatureManual: false
@@ -127,7 +188,7 @@ export class DataRepository {
         phone: "+54 11 4567-8901",
         city: "Rosario",
         businessType: "Consultora",
-        pipelineState: "nuevo",
+        pipelineState: "contacto_inicial",
         createdAt: new Date().toISOString(),
         temperature: "cold",
         temperatureManual: false
@@ -138,7 +199,6 @@ export class DataRepository {
       await this.saveLead(lead);
     }
 
-    // Agregar algunas interacciones fake
     await this.addInteraction({
       id: "int-1",
       leadId: "lead-1",

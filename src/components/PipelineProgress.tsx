@@ -1,5 +1,5 @@
-import { Check } from "lucide-react";
-import { PIPELINE_STATES, getPipelineState } from "@/lib/pipeline";
+import { Check, Pause, Trophy, XCircle } from "lucide-react";
+import { MAIN_PIPELINE_STATES, getPipelineState, isTerminalState, isAuxiliaryState } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
 
 interface PipelineProgressProps {
@@ -8,19 +8,21 @@ interface PipelineProgressProps {
 }
 
 export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineProgressProps) => {
-  // Filter out final states for the main pipeline flow
-  const mainPipelineStates = PIPELINE_STATES.filter(
-    state => state.id !== "cierreGanado" && state.id !== "cierrePerdido"
-  );
-  
   const currentState = getPipelineState(currentStateId);
-  const currentIndex = mainPipelineStates.findIndex(state => state.id === currentStateId);
+  const currentIndex = MAIN_PIPELINE_STATES.findIndex(state => state.id === currentStateId);
   
-  // Handle final states
-  const isFinalState = currentStateId === "cierreGanado" || currentStateId === "cierrePerdido";
-  const progressPercentage = isFinalState 
+  const isTerminal = isTerminalState(currentStateId);
+  const isAuxiliary = isAuxiliaryState(currentStateId);
+  const isWin = currentStateId === "win";
+  const isLost = currentStateId === "lost";
+  const isFollowUp = currentStateId === "follow_up";
+  
+  // Calculate progress percentage
+  const progressPercentage = isTerminal 
     ? 100 
-    : ((currentIndex + 1) / mainPipelineStates.length) * 100;
+    : isAuxiliary 
+      ? 50 // Follow up shows 50% as it's a "pause" state
+      : ((currentIndex + 1) / MAIN_PIPELINE_STATES.length) * 100;
 
   if (variant === "compact") {
     return (
@@ -31,7 +33,13 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div 
-            className="h-full bg-primary transition-all duration-500 ease-out"
+            className={cn(
+              "h-full transition-all duration-500 ease-out",
+              isWin && "bg-green-500",
+              isLost && "bg-destructive",
+              isFollowUp && "bg-yellow-500",
+              !isTerminal && !isAuxiliary && "bg-primary"
+            )}
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
@@ -48,11 +56,25 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Progreso</span>
-          <span className="font-semibold text-primary">{Math.round(progressPercentage)}%</span>
+          <span className={cn(
+            "font-semibold",
+            isWin && "text-green-500",
+            isLost && "text-destructive",
+            isFollowUp && "text-yellow-500",
+            !isTerminal && !isAuxiliary && "text-primary"
+          )}>
+            {Math.round(progressPercentage)}%
+          </span>
         </div>
         <div className="h-3 bg-muted rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out"
+            className={cn(
+              "h-full transition-all duration-500 ease-out",
+              isWin && "bg-gradient-to-r from-green-500 to-green-400",
+              isLost && "bg-gradient-to-r from-destructive to-destructive/80",
+              isFollowUp && "bg-gradient-to-r from-yellow-500 to-yellow-400",
+              !isTerminal && !isAuxiliary && "bg-gradient-to-r from-primary to-primary/80"
+            )}
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
@@ -62,19 +84,19 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
       <div className="space-y-4">
         {/* Desktop view - horizontal */}
         <div className="hidden md:flex items-start justify-between gap-2">
-          {mainPipelineStates.map((state, index) => {
-            const isCompleted = index < currentIndex;
+          {MAIN_PIPELINE_STATES.map((state, index) => {
+            const isCompleted = !isAuxiliary && (isTerminal || index < currentIndex);
             const isCurrent = state.id === currentStateId;
-            const isPending = index > currentIndex;
+            const isPending = !isTerminal && !isAuxiliary && index > currentIndex;
 
             return (
               <div key={state.id} className="flex-1 relative">
                 {/* Connector line */}
-                {index < mainPipelineStates.length - 1 && (
+                {index < MAIN_PIPELINE_STATES.length - 1 && (
                   <div 
                     className={cn(
                       "absolute top-5 left-[60%] w-[calc(100%-20px)] h-0.5 transition-colors",
-                      isCompleted ? "bg-primary" : "bg-muted"
+                      isCompleted || (isTerminal && index < MAIN_PIPELINE_STATES.length - 1) ? "bg-primary" : "bg-muted"
                     )}
                   />
                 )}
@@ -115,10 +137,10 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
 
         {/* Mobile view - vertical */}
         <div className="md:hidden space-y-3">
-          {mainPipelineStates.map((state, index) => {
-            const isCompleted = index < currentIndex;
+          {MAIN_PIPELINE_STATES.map((state, index) => {
+            const isCompleted = !isAuxiliary && (isTerminal || index < currentIndex);
             const isCurrent = state.id === currentStateId;
-            const isPending = index > currentIndex;
+            const isPending = !isTerminal && !isAuxiliary && index > currentIndex;
 
             return (
               <div key={state.id} className="flex items-start gap-3">
@@ -140,7 +162,7 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
                   </div>
                   
                   {/* Connector line */}
-                  {index < mainPipelineStates.length - 1 && (
+                  {index < MAIN_PIPELINE_STATES.length - 1 && (
                     <div 
                       className={cn(
                         "absolute top-9 left-1/2 -translate-x-1/2 w-0.5 h-6 transition-colors",
@@ -171,18 +193,44 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
           })}
         </div>
 
-        {/* Final states indicator */}
-        {isFinalState && (
-          <div className="mt-4 p-3 rounded-lg border-2 border-primary bg-primary/10 animate-fade-in">
+        {/* Special states indicator */}
+        {isFollowUp && (
+          <div className="mt-4 p-3 rounded-lg border-2 border-yellow-500 bg-yellow-500/10 animate-fade-in">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                <Check className="h-5 w-5" />
+              <div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center">
+                <Pause className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-semibold text-foreground">
-                  {currentState?.name}
-                </p>
-                <p className="text-xs text-muted-foreground">Pipeline completado</p>
+                <p className="font-semibold text-foreground">Follow Up</p>
+                <p className="text-xs text-muted-foreground">En seguimiento - esperando respuesta</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isWin && (
+          <div className="mt-4 p-3 rounded-lg border-2 border-green-500 bg-green-500/10 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+                <Trophy className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">¡Cliente Ganado!</p>
+                <p className="text-xs text-muted-foreground">Pipeline completado exitosamente</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isLost && (
+          <div className="mt-4 p-3 rounded-lg border-2 border-destructive bg-destructive/10 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                <XCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Perdido / No Ahora</p>
+                <p className="text-xs text-muted-foreground">Lead archivado</p>
               </div>
             </div>
           </div>

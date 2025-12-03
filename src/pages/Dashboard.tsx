@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Lead, LeadTemperature } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
-import { PIPELINE_STATES } from "@/lib/pipeline";
+import { MAIN_PIPELINE_STATES, PIPELINE_STATES } from "@/lib/pipeline";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
 import { LeadsTable } from "@/components/LeadsTable";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -215,10 +215,8 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {PIPELINE_STATES.filter(
-                  state => state.id !== "cierreGanado" && state.id !== "cierrePerdido"
-                ).map(state => {
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {MAIN_PIPELINE_STATES.map(state => {
                   const count = leads.filter(lead => lead.pipelineState === state.id).length;
                   return (
                     <div 
@@ -231,18 +229,24 @@ const Dashboard = () => {
                   );
                 })}
               </div>
-              <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <div className="p-4 rounded-lg border bg-yellow-500/10 border-yellow-500/20">
+                  <p className="text-2xl font-bold text-yellow-600 mb-1">
+                    {leads.filter(l => l.pipelineState === "follow_up").length}
+                  </p>
+                  <p className="text-xs text-yellow-700 leading-tight">Follow Up</p>
+                </div>
                 <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/20">
                   <p className="text-2xl font-bold text-green-600 mb-1">
-                    {leads.filter(l => l.pipelineState === "cierreGanado").length}
+                    {leads.filter(l => l.pipelineState === "win").length}
                   </p>
-                  <p className="text-xs text-green-700 leading-tight">Cierre Ganado</p>
+                  <p className="text-xs text-green-700 leading-tight">Cliente (Win)</p>
                 </div>
                 <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/20">
                   <p className="text-2xl font-bold text-red-600 mb-1">
-                    {leads.filter(l => l.pipelineState === "cierrePerdido").length}
+                    {leads.filter(l => l.pipelineState === "lost").length}
                   </p>
-                  <p className="text-xs text-red-700 leading-tight">Cierre Perdido</p>
+                  <p className="text-xs text-red-700 leading-tight">Perdido (Lost)</p>
                 </div>
               </div>
             </CardContent>

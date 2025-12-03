@@ -52,11 +52,30 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
     };
   };
 
-  const getStateBadgeVariant = (stateId: string) => {
-    if (stateId === "cierreGanado") return "default";
-    if (stateId === "cierrePerdido") return "destructive";
-    if (stateId === "nuevo") return "secondary";
-    return "outline";
+  const getStateBadgeVariant = (stateId: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (stateId) {
+      case "win":
+        return "default";
+      case "lost":
+        return "destructive";
+      case "follow_up":
+        return "secondary";
+      case "contacto_inicial":
+        return "outline";
+      default:
+        return "outline";
+    }
+  };
+
+  const getStateBadgeClassName = (stateId: string): string => {
+    switch (stateId) {
+      case "win":
+        return "bg-green-500 hover:bg-green-500/80 text-white border-green-500";
+      case "follow_up":
+        return "bg-yellow-500 hover:bg-yellow-500/80 text-white border-yellow-500";
+      default:
+        return "";
+    }
   };
 
   return (
@@ -96,7 +115,10 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStateBadgeVariant(lead.pipelineState)}>
+                      <Badge 
+                        variant={getStateBadgeVariant(lead.pipelineState)}
+                        className={getStateBadgeClassName(lead.pipelineState)}
+                      >
                         {state?.name || lead.pipelineState}
                       </Badge>
                     </TableCell>

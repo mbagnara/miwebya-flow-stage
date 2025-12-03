@@ -8,92 +8,86 @@ export interface PipelineConfigStage {
 }
 
 const STORAGE_KEY = 'pipelineConfig';
+const MIGRATION_FLAG = 'pipeline_migrated_v3';
 
+// Pipeline V3: 4 etapas principales + 1 auxiliar + 2 terminales
 const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   {
-    id: "nuevo",
+    id: "contacto_inicial",
     orden: 1,
-    nombre: "Nuevo",
+    nombre: "Contacto Inicial",
     objetivo: "Obtener la primera respuesta del lead.",
-    accion: "Enviar el primer mensaje base ofreciendo el video corto.",
-    avanzaCuando: "El lead responde cualquier mensaje (cualquier tipo de respuesta)."
+    accion: "Enviar primer mensaje personalizado ofreciendo valor.",
+    avanzaCuando: "El lead responde mostrando interés."
   },
   {
-    id: "respondio",
+    id: "valor_entregado",
     orden: 2,
-    nombre: "Respondió",
-    objetivo: "Transformar la respuesta en algo concreto (video o demo).",
-    accion: "Ofrecer explícitamente enviar un video o una mini demo.",
-    avanzaCuando: "Se envía el video al lead."
+    nombre: "Valor Entregado",
+    objetivo: "Entregar valor tangible (video, análisis, recurso).",
+    accion: "Enviar video personalizado o recurso de valor.",
+    avanzaCuando: "El lead consume el contenido y responde."
   },
   {
-    id: "video_enviado",
+    id: "interaccion_activa",
     orden: 3,
-    nombre: "Video Enviado",
-    objetivo: "Conseguir que vea el video y abra la conversación hacia una demo.",
-    accion: "Enviar mensaje corto de seguimiento preguntando si lo vio y ofreciendo una demo de 5 minutos.",
-    avanzaCuando: "Se ofrece formalmente la demo mediante un mensaje enviado desde el CRM."
+    nombre: "Interacción Activa",
+    objetivo: "Mantener conversación activa y avanzar hacia demo.",
+    accion: "Proponer llamada/demo basándose en el interés mostrado.",
+    avanzaCuando: "Se agenda o realiza una demo/llamada."
   },
   {
-    id: "demo_ofrecida",
+    id: "demo_evaluacion",
     orden: 4,
-    nombre: "Demo Ofrecida",
-    objetivo: "Cerrar una fecha y hora para la demo.",
-    accion: "Preguntar qué día/hora le acomoda más para la demo.",
-    avanzaCuando: "El lead confirma un horario y se agenda la demo."
+    nombre: "Demo / Evaluación",
+    objetivo: "Presentar propuesta y obtener decisión.",
+    accion: "Realizar demo, enviar propuesta y hacer seguimiento.",
+    avanzaCuando: "El lead acepta (Win) o rechaza (Lost)."
   },
   {
-    id: "demo_agendada",
+    id: "follow_up",
     orden: 5,
-    nombre: "Demo Agendada",
-    objetivo: "Que la demo efectivamente ocurra.",
-    accion: "Enviar recordatorio el mismo día y tener el demo listo.",
-    avanzaCuando: "La demo se realiza, aunque sea breve."
+    nombre: "Follow Up",
+    objetivo: "Reactivar leads que dejaron de responder.",
+    accion: "Enviar mensaje de seguimiento sin ser invasivo.",
+    avanzaCuando: "El lead retoma la conversación (vuelve a etapa anterior)."
   },
   {
-    id: "demo_realizada",
+    id: "win",
     orden: 6,
-    nombre: "Demo Realizada",
-    objetivo: "Convertir el interés del lead en una oferta clara.",
-    accion: "Enviar resumen de lo visto y la oferta (plan + precio + CTA).",
-    avanzaCuando: "Se envía la oferta formal al lead."
+    nombre: "Cliente",
+    objetivo: "Formalizar inicio del proyecto.",
+    accion: "Enviar bienvenida y próximos pasos.",
+    avanzaCuando: "Proyecto iniciado - Estado final."
   },
   {
-    id: "oferta_enviada",
+    id: "lost",
     orden: 7,
-    nombre: "Oferta Enviada",
-    objetivo: "Obtener sí / no / cuándo.",
-    accion: "Enviar follow-up corto preguntando qué le pareció la propuesta y si quiere avanzar esta semana.",
-    avanzaCuando: "Pasa a Cierre Ganado cuando acepta o paga; pasa a Cierre Perdido cuando dice que no o no responde después de varios intentos."
-  },
-  {
-    id: "cierre_ganado",
-    orden: 8,
-    nombre: "Cierre Ganado",
-    objetivo: "Formalizar inicio y entregar rápido.",
-    accion: "Enviar mensaje de bienvenida con los siguientes pasos (formulario, datos, fecha de entrega).",
-    avanzaCuando: "No avanza; es estado final de éxito."
-  },
-  {
-    id: "cierre_perdido",
-    orden: 9,
-    nombre: "Cierre Perdido",
-    objetivo: "Cerrar el ciclo sin fricción.",
-    accion: "Enviar mensaje de agradecimiento dejando abierta la puerta para el futuro.",
-    avanzaCuando: "No avanza; es estado final de cierre."
+    nombre: "Perdido / No Ahora",
+    objetivo: "Cerrar el ciclo de forma profesional.",
+    accion: "Enviar mensaje de despedida dejando puerta abierta.",
+    avanzaCuando: "Lead archivado - Estado final."
   }
 ];
 
 class PipelineConfigRepository {
   /**
    * Obtiene la configuración del pipeline desde localStorage.
-   * Si no existe, inicializa con la configuración por defecto.
+   * Si no existe o necesita migración, inicializa con la configuración V3.
    */
   getPipelineConfig(): PipelineConfigStage[] {
     try {
+      const migrated = localStorage.getItem(MIGRATION_FLAG);
+      
+      // Si no se ha migrado a V3, forzar nueva configuración
+      if (!migrated) {
+        this.savePipelineConfig(DEFAULT_PIPELINE_CONFIG);
+        localStorage.setItem(MIGRATION_FLAG, 'true');
+        return DEFAULT_PIPELINE_CONFIG;
+      }
+      
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) {
-        // Primera vez - guardar configuración por defecto
         this.savePipelineConfig(DEFAULT_PIPELINE_CONFIG);
         return DEFAULT_PIPELINE_CONFIG;
       }
@@ -144,10 +138,11 @@ class PipelineConfigRepository {
   }
 
   /**
-   * Restablece la configuración a los valores por defecto.
+   * Restablece la configuración a los valores por defecto V3.
    */
   resetToDefault(): void {
     this.savePipelineConfig(DEFAULT_PIPELINE_CONFIG);
+    localStorage.setItem(MIGRATION_FLAG, 'true');
   }
 }
 
