@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [temperatureFilter, setTemperatureFilter] = useState<LeadTemperature | "all">("all");
+  const [stateFilter, setStateFilter] = useState<string>("all");
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -46,9 +47,11 @@ const Dashboard = () => {
     loadLeads();
   }, []);
 
-  const filteredLeads = temperatureFilter === "all"
-    ? leads
-    : leads.filter(lead => lead.temperature === temperatureFilter);
+  const filteredLeads = leads.filter(lead => {
+    const matchesTemperature = temperatureFilter === "all" || lead.temperature === temperatureFilter;
+    const matchesState = stateFilter === "all" || lead.pipelineState === stateFilter;
+    return matchesTemperature && matchesState;
+  });
 
   // Paginación
   const totalLeads = filteredLeads.length;
@@ -60,7 +63,7 @@ const Dashboard = () => {
   // Reset a página 1 cuando cambia el filtro
   useEffect(() => {
     setCurrentPage(1);
-  }, [temperatureFilter, itemsPerPage]);
+  }, [temperatureFilter, stateFilter, itemsPerPage]);
 
   const handleExportLeads = async () => {
     try {
@@ -253,31 +256,56 @@ const Dashboard = () => {
           </Card>
         )}
 
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={temperatureFilter === "all" ? "default" : "outline"}
-            onClick={() => setTemperatureFilter("all")}
-          >
-            Todos
-          </Button>
-          <Button
-            variant={temperatureFilter === "cold" ? "default" : "outline"}
-            onClick={() => setTemperatureFilter("cold")}
-          >
-            Cold
-          </Button>
-          <Button
-            variant={temperatureFilter === "warm" ? "default" : "outline"}
-            onClick={() => setTemperatureFilter("warm")}
-          >
-            Warm
-          </Button>
-          <Button
-            variant={temperatureFilter === "hot" ? "default" : "outline"}
-            onClick={() => setTemperatureFilter("hot")}
-          >
-            Hot
-          </Button>
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          {/* Filtro por temperatura */}
+          <div className="flex gap-2">
+            <Button
+              variant={temperatureFilter === "all" ? "default" : "outline"}
+              onClick={() => setTemperatureFilter("all")}
+              size="sm"
+            >
+              Todos
+            </Button>
+            <Button
+              variant={temperatureFilter === "cold" ? "default" : "outline"}
+              onClick={() => setTemperatureFilter("cold")}
+              size="sm"
+            >
+              Cold
+            </Button>
+            <Button
+              variant={temperatureFilter === "warm" ? "default" : "outline"}
+              onClick={() => setTemperatureFilter("warm")}
+              size="sm"
+            >
+              Warm
+            </Button>
+            <Button
+              variant={temperatureFilter === "hot" ? "default" : "outline"}
+              onClick={() => setTemperatureFilter("hot")}
+              size="sm"
+            >
+              Hot
+            </Button>
+          </div>
+
+          {/* Filtro por estado del pipeline */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Estado:</span>
+            <Select value={stateFilter} onValueChange={setStateFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Todos los estados" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                {PIPELINE_STATES.map(state => (
+                  <SelectItem key={state.id} value={state.id}>
+                    {state.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Contador y selector de paginación */}
