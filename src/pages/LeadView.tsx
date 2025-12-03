@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Lead, Interaction, LeadTemperature } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
-import { getPipelineState, getNextState, getPreviousState } from "@/lib/pipeline";
+import { getPipelineState, getNextState, getPreviousState, isTerminalState, isAuxiliaryState, MAIN_PIPELINE_STATES } from "@/lib/pipeline";
 import { updateLeadTemperature } from "@/lib/temperature";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { PipelineProgress } from "@/components/PipelineProgress";
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const LeadView = () => {
@@ -25,6 +25,7 @@ const LeadView = () => {
   const [editableMessage, setEditableMessage] = useState("");
   const [incomingMessage, setIncomingMessage] = useState("");
   const [interactionSource, setInteractionSource] = useState<"lead" | "yo">("lead");
+  const [previousMainState, setPreviousMainState] = useState<string | null>(null);
 
   const loadLeadData = async () => {
     if (!id) return;
@@ -48,8 +49,19 @@ const LeadView = () => {
     if (lead) {
       const currentState = getPipelineState(lead.pipelineState);
       setEditableMessage(currentState?.recommendedMessage || "");
+      
+      // Si está en follow_up, intentar recuperar el estado anterior
+      if (isAuxiliaryState(lead.pipelineState)) {
+        // Buscar en las interacciones el último estado principal
+        const lastMainStateIndex = MAIN_PIPELINE_STATES.findIndex(s => 
+          interactions.some(i => i.message.includes(`Movido a: ${s.name}`))
+        );
+        if (lastMainStateIndex >= 0) {
+          setPreviousMainState(MAIN_PIPELINE_STATES[lastMainStateIndex].id);
+        }
+      }
     }
-  }, [lead]);
+  }, [lead, interactions]);
 
   const handleResetMessage = () => {
     const currentState = getPipelineState(lead?.pipelineState || "");
@@ -112,7 +124,7 @@ const LeadView = () => {
       return;
     }
 
-    // Registrar interacción con el mensaje del textarea (puede ser editado)
+    // Registrar interacción con el mensaje del textarea
     const newInteraction: Interaction = {
       id: `int-${Date.now()}`,
       leadId: lead.id,
@@ -125,7 +137,6 @@ const LeadView = () => {
     // Actualizar estado del lead y temperatura automática
     let updatedLead = { ...lead, pipelineState: nextState.id };
     
-    // Actualizar temperatura automáticamente si no es manual
     const allInteractions = [...interactions, newInteraction];
     updatedLead = updateLeadTemperature(updatedLead, allInteractions);
     
@@ -136,7 +147,61 @@ const LeadView = () => {
       description: `Lead avanzado a: ${nextState.name}`
     });
 
-    // Recargar datos
+    loadLeadData();
+  };
+
+  const handleMoveToState = async (newStateId: string, stateName: string) => {
+    if (!lead) return;
+
+    // Guardar el estado actual antes de mover a follow_up
+    if (newStateId === "follow_up" && !isAuxiliaryState(lead.pipelineState) && !isTerminalState(lead.pipelineState)) {
+      setPreviousMainState(lead.pipelineState);
+    }
+
+    const newInteraction: Interaction = {
+      id: `int-${Date.now()}`,
+      leadId: lead.id,
+      message: `Movido a: ${stateName}`,
+      createdAt: new Date().toISOString(),
+      direction: "outgoing"
+    };
+    await dataRepository.addInteraction(newInteraction);
+
+    const updatedLead: Lead = { ...lead, pipelineState: newStateId };
+    await dataRepository.updateLead(updatedLead);
+
+    toast({
+      title: "Estado actualizado",
+      description: `Lead movido a: ${stateName}`
+    });
+
+    loadLeadData();
+  };
+
+  const handleReturnFromFollowUp = async () => {
+    if (!lead || !previousMainState) return;
+
+    const previousState = getPipelineState(previousMainState);
+    if (!previousState) return;
+
+    const newInteraction: Interaction = {
+      id: `int-${Date.now()}`,
+      leadId: lead.id,
+      message: `Retomado desde Follow Up a: ${previousState.name}`,
+      createdAt: new Date().toISOString(),
+      direction: "outgoing"
+    };
+    await dataRepository.addInteraction(newInteraction);
+
+    const updatedLead: Lead = { ...lead, pipelineState: previousMainState };
+    await dataRepository.updateLead(updatedLead);
+
+    toast({
+      title: "Lead retomado",
+      description: `Lead volvió a: ${previousState.name}`
+    });
+
+    setPreviousMainState(null);
     loadLeadData();
   };
 
@@ -162,7 +227,9 @@ const LeadView = () => {
   const currentState = getPipelineState(lead.pipelineState);
   const nextState = getNextState(lead.pipelineState);
   const previousState = getPreviousState(lead.pipelineState);
-  const canAdvance = nextState !== undefined;
+  const isTerminal = isTerminalState(lead.pipelineState);
+  const isAuxiliary = isAuxiliaryState(lead.pipelineState);
+  const canAdvance = nextState !== undefined && !isTerminal && !isAuxiliary;
 
   return (
     <div className="min-h-screen bg-background">
@@ -191,6 +258,7 @@ const LeadView = () => {
                 <PipelineProgress currentStateId={lead.pipelineState} />
               </CardContent>
             </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -273,7 +341,7 @@ const LeadView = () => {
                   <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   
                   <div className="flex-1 text-center">
-                    {nextState ? (
+                    {nextState && !isTerminal && !isAuxiliary ? (
                       <>
                         <p className="text-xs text-muted-foreground mb-1">Siguiente</p>
                         <Badge variant="outline" className="text-xs">
@@ -281,46 +349,106 @@ const LeadView = () => {
                         </Badge>
                       </>
                     ) : (
-                      <div className="text-xs text-muted-foreground">Estado final</div>
+                      <div className="text-xs text-muted-foreground">
+                        {isTerminal ? "Estado final" : isAuxiliary ? "En seguimiento" : "—"}
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Mensaje recomendado:
-                    </label>
-                    <Textarea
-                      value={editableMessage}
-                      onChange={(e) => setEditableMessage(e.target.value)}
-                      className="min-h-[100px] resize-none"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleResetMessage}
-                    className="w-full"
-                  >
-                    Restablecer mensaje
-                  </Button>
-                </div>
+                {/* Mensaje recomendado y acción principal */}
+                {!isTerminal && (
+                  <>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">
+                          Mensaje recomendado:
+                        </label>
+                        <Textarea
+                          value={editableMessage}
+                          onChange={(e) => setEditableMessage(e.target.value)}
+                          className="min-h-[100px] resize-none"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetMessage}
+                        className="w-full"
+                      >
+                        Restablecer mensaje
+                      </Button>
+                    </div>
 
-                <Button
-                  className="w-full gap-2"
-                  onClick={handleAdvanceState}
-                  disabled={!canAdvance}
-                >
-                  {canAdvance ? (
-                    <>
-                      Aplicar acción y avanzar
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  ) : (
-                    "Estado final alcanzado"
-                  )}
-                </Button>
+                    {/* Botón principal de avance */}
+                    {canAdvance && (
+                      <Button
+                        className="w-full gap-2"
+                        onClick={handleAdvanceState}
+                      >
+                        Aplicar acción y avanzar
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {/* Botón para volver desde Follow Up */}
+                    {isAuxiliary && previousMainState && (
+                      <Button
+                        className="w-full gap-2"
+                        variant="outline"
+                        onClick={handleReturnFromFollowUp}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Retomar conversación
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {/* Acciones especiales */}
+                {!isTerminal && !isAuxiliary && (
+                  <div className="pt-4 border-t space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Acciones especiales:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-yellow-500 text-yellow-600 hover:bg-yellow-500/10"
+                        onClick={() => handleMoveToState("follow_up", "Follow Up")}
+                      >
+                        <Pause className="h-4 w-4" />
+                        Follow Up
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-green-500 text-green-600 hover:bg-green-500/10"
+                        onClick={() => handleMoveToState("win", "Cliente")}
+                      >
+                        <Trophy className="h-4 w-4" />
+                        Marcar como Win
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-destructive text-destructive hover:bg-destructive/10"
+                        onClick={() => handleMoveToState("lost", "Perdido")}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Marcar como Lost
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Estado terminal alcanzado */}
+                {isTerminal && (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">
+                      Este lead ha alcanzado un estado final.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

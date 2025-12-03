@@ -107,7 +107,7 @@ export const CreateLeadDialog = ({
         phone: formData.phone,
         city: formData.city,
         businessType: formData.businessType,
-        pipelineState: "nuevo",
+        pipelineState: "contacto_inicial",
         createdAt: new Date().toISOString(),
         temperature: "cold",
         temperatureManual: false
