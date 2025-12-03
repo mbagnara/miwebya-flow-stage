@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { PipelineProgress } from "@/components/PipelineProgress";
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download } from "lucide-react";
+import { downloadLeadJSONL } from "@/lib/leadExporter";
 import { toast } from "@/hooks/use-toast";
 
 const LeadView = () => {
@@ -234,14 +235,24 @@ const LeadView = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4 max-w-6xl">
-        <Button 
-          variant="ghost" 
-          className="mb-6 gap-2"
-          onClick={() => navigate("/")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver al Dashboard
-        </Button>
+        <div className="flex items-center justify-between mb-6">
+          <Button 
+            variant="ghost" 
+            className="gap-2"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver al Dashboard
+          </Button>
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => downloadLeadJSONL(lead, interactions)}
+          >
+            <Download className="h-4 w-4" />
+            Exportar Lead
+          </Button>
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Columna izquierda: Datos del lead */}
