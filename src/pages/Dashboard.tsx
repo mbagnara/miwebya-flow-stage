@@ -8,7 +8,7 @@ import { PipelineProgress } from "@/components/PipelineProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, GitBranch, Download, Upload } from "lucide-react";
+import { Settings, GitBranch, Download, Upload, MessageSquarePlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -144,6 +144,23 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">Gestiona tus leads y pipeline de ventas</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="default" 
+              onClick={() => navigate("/bulk-first-message")}
+              className="hidden sm:flex"
+            >
+              <MessageSquarePlus className="h-4 w-4 mr-2" />
+              Agregar Primer Mensaje
+            </Button>
+            <Button 
+              variant="default" 
+              size="icon"
+              onClick={() => navigate("/bulk-first-message")}
+              className="sm:hidden"
+              title="Agregar Primer Mensaje"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </Button>
             <Button 
               variant="outline" 
               onClick={handleExportLeads}
