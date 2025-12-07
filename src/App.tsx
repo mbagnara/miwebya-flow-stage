@@ -7,8 +7,8 @@ import Dashboard from "./pages/Dashboard";
 import LeadView from "./pages/LeadView";
 import Settings from "./pages/Settings";
 import PipelineConfig from "./pages/PipelineConfig";
+import BulkFirstMessage from "./pages/BulkFirstMessage";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -22,6 +22,7 @@ const App = () => (
           <Route path="/lead/:id" element={<LeadView />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/config/pipeline" element={<PipelineConfig />} />
+          <Route path="/bulk-first-message" element={<BulkFirstMessage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
