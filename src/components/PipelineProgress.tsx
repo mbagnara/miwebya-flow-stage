@@ -5,24 +5,25 @@ import { cn } from "@/lib/utils";
 interface PipelineProgressProps {
   currentStateId: string;
   variant?: "full" | "compact";
+  previousStateId?: string | null; // Estado anterior cuando está en Follow Up
 }
 
-export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineProgressProps) => {
+export const PipelineProgress = ({ currentStateId, variant = "full", previousStateId }: PipelineProgressProps) => {
   const currentState = getPipelineState(currentStateId);
-  const currentIndex = MAIN_PIPELINE_STATES.findIndex(state => state.id === currentStateId);
-  
   const isTerminal = isTerminalState(currentStateId);
   const isAuxiliary = isAuxiliaryState(currentStateId);
   const isWin = currentStateId === "win";
   const isLost = currentStateId === "lost";
   const isFollowUp = currentStateId === "follow_up";
   
-  // Calculate progress percentage
+  // Para Follow Up, usar el estado anterior para calcular el progreso
+  const effectiveStateId = isFollowUp && previousStateId ? previousStateId : currentStateId;
+  const currentIndex = MAIN_PIPELINE_STATES.findIndex(state => state.id === effectiveStateId);
+  
+  // Calculate progress percentage basado en el estado efectivo
   const progressPercentage = isTerminal 
     ? 100 
-    : isAuxiliary 
-      ? 50 // Follow up shows 50% as it's a "pause" state
-      : ((currentIndex + 1) / MAIN_PIPELINE_STATES.length) * 100;
+    : ((currentIndex + 1) / MAIN_PIPELINE_STATES.length) * 100;
 
   if (variant === "compact") {
     return (
@@ -37,8 +38,7 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
               "h-full transition-all duration-500 ease-out",
               isWin && "bg-green-500",
               isLost && "bg-destructive",
-              isFollowUp && "bg-yellow-500",
-              !isTerminal && !isAuxiliary && "bg-primary"
+              !isTerminal && !isLost && "bg-primary"
             )}
             style={{ width: `${progressPercentage}%` }}
           />
@@ -60,8 +60,7 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
             "font-semibold",
             isWin && "text-green-500",
             isLost && "text-destructive",
-            isFollowUp && "text-yellow-500",
-            !isTerminal && !isAuxiliary && "text-primary"
+            !isTerminal && !isLost && "text-primary"
           )}>
             {Math.round(progressPercentage)}%
           </span>
@@ -72,8 +71,7 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
               "h-full transition-all duration-500 ease-out",
               isWin && "bg-gradient-to-r from-green-500 to-green-400",
               isLost && "bg-gradient-to-r from-destructive to-destructive/80",
-              isFollowUp && "bg-gradient-to-r from-yellow-500 to-yellow-400",
-              !isTerminal && !isAuxiliary && "bg-gradient-to-r from-primary to-primary/80"
+              !isTerminal && !isLost && "bg-gradient-to-r from-primary to-primary/80"
             )}
             style={{ width: `${progressPercentage}%` }}
           />
@@ -85,9 +83,10 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
         {/* Desktop view - horizontal */}
         <div className="hidden md:flex items-start justify-between gap-2">
           {MAIN_PIPELINE_STATES.map((state, index) => {
-            const isCompleted = !isAuxiliary && (isTerminal || index < currentIndex);
-            const isCurrent = state.id === currentStateId;
-            const isPending = !isTerminal && !isAuxiliary && index > currentIndex;
+            // Para Follow Up, usar el estado efectivo para determinar completado/actual/pendiente
+            const isCompleted = isTerminal || index < currentIndex;
+            const isCurrent = state.id === effectiveStateId;
+            const isPending = !isTerminal && index > currentIndex;
 
             return (
               <div key={state.id} className="flex-1 relative">
@@ -138,9 +137,10 @@ export const PipelineProgress = ({ currentStateId, variant = "full" }: PipelineP
         {/* Mobile view - vertical */}
         <div className="md:hidden space-y-3">
           {MAIN_PIPELINE_STATES.map((state, index) => {
-            const isCompleted = !isAuxiliary && (isTerminal || index < currentIndex);
-            const isCurrent = state.id === currentStateId;
-            const isPending = !isTerminal && !isAuxiliary && index > currentIndex;
+            // Para Follow Up, usar el estado efectivo para determinar completado/actual/pendiente
+            const isCompleted = isTerminal || index < currentIndex;
+            const isCurrent = state.id === effectiveStateId;
+            const isPending = !isTerminal && index > currentIndex;
 
             return (
               <div key={state.id} className="flex items-start gap-3">
