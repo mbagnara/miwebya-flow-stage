@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -335,148 +336,137 @@ const Dashboard = () => {
         )}
 
         {/* Filtros */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          {/* Filtro de fecha */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Fecha:</span>
-            <div className="flex gap-1">
-              <Button
-                variant={dateFilterMode === "today" ? "default" : "outline"}
-                onClick={() => {
-                  setDateFilterMode("today");
-                  setDateFrom(undefined);
-                  setDateTo(undefined);
+        <div className="bg-muted/30 rounded-lg border p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Filtro de fecha */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Fecha</label>
+              <ToggleGroup
+                type="single"
+                value={dateFilterMode}
+                onValueChange={(value) => {
+                  if (value) {
+                    setDateFilterMode(value as DateFilterMode);
+                    if (value !== "range") {
+                      setDateFrom(undefined);
+                      setDateTo(undefined);
+                    }
+                  }
                 }}
-                size="sm"
+                className="justify-start"
               >
-                Hoy
-              </Button>
-              <Button
-                variant={dateFilterMode === "range" ? "default" : "outline"}
-                onClick={() => setDateFilterMode("range")}
-                size="sm"
-              >
-                Rango
-              </Button>
-              <Button
-                variant={dateFilterMode === "all" ? "default" : "outline"}
-                onClick={() => {
-                  setDateFilterMode("all");
-                  setDateFrom(undefined);
-                  setDateTo(undefined);
-                }}
-                size="sm"
-              >
-                Todo
-              </Button>
+                <ToggleGroupItem value="today" size="sm" className="px-3">
+                  Hoy
+                </ToggleGroupItem>
+                <ToggleGroupItem value="range" size="sm" className="px-3">
+                  Rango
+                </ToggleGroupItem>
+                <ToggleGroupItem value="all" size="sm" className="px-3">
+                  Todo
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
-            
-            {/* Date pickers para modo Rango */}
-            {dateFilterMode === "range" && (
-              <div className="flex items-center gap-2 ml-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "w-[130px] justify-start text-left font-normal",
-                        !dateFrom && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Desde"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateFrom}
-                      onSelect={setDateFrom}
-                      initialFocus
-                      locale={es}
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "w-[130px] justify-start text-left font-normal",
-                        !dateTo && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateTo ? format(dateTo, "dd/MM/yyyy") : "Hasta"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateTo}
-                      onSelect={setDateTo}
-                      initialFocus
-                      locale={es}
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+
+            {/* Filtro por temperatura */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Temperatura</label>
+              <ToggleGroup
+                type="single"
+                value={temperatureFilter}
+                onValueChange={(value) => {
+                  if (value) setTemperatureFilter(value as LeadTemperature | "all");
+                }}
+                className="justify-start"
+              >
+                <ToggleGroupItem value="all" size="sm" className="px-3">
+                  Todos
+                </ToggleGroupItem>
+                <ToggleGroupItem value="cold" size="sm" className="px-3">
+                  Cold
+                </ToggleGroupItem>
+                <ToggleGroupItem value="warm" size="sm" className="px-3">
+                  Warm
+                </ToggleGroupItem>
+                <ToggleGroupItem value="hot" size="sm" className="px-3">
+                  Hot
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            {/* Filtro por estado del pipeline */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Estado</label>
+              <Select value={stateFilter} onValueChange={setStateFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todos los estados" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  {PIPELINE_STATES.map(state => (
+                    <SelectItem key={state.id} value={state.id}>
+                      {state.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Filtro por temperatura */}
-          <div className="flex gap-2">
-            <Button
-              variant={temperatureFilter === "all" ? "default" : "outline"}
-              onClick={() => setTemperatureFilter("all")}
-              size="sm"
-            >
-              Todos
-            </Button>
-            <Button
-              variant={temperatureFilter === "cold" ? "default" : "outline"}
-              onClick={() => setTemperatureFilter("cold")}
-              size="sm"
-            >
-              Cold
-            </Button>
-            <Button
-              variant={temperatureFilter === "warm" ? "default" : "outline"}
-              onClick={() => setTemperatureFilter("warm")}
-              size="sm"
-            >
-              Warm
-            </Button>
-            <Button
-              variant={temperatureFilter === "hot" ? "default" : "outline"}
-              onClick={() => setTemperatureFilter("hot")}
-              size="sm"
-            >
-              Hot
-            </Button>
-          </div>
-
-          {/* Filtro por estado del pipeline */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Estado:</span>
-            <Select value={stateFilter} onValueChange={setStateFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Todos los estados" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {PIPELINE_STATES.map(state => (
-                  <SelectItem key={state.id} value={state.id}>
-                    {state.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Date pickers para modo Rango - fila separada */}
+          {dateFilterMode === "range" && (
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-4 pt-4 border-t border-border/50">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "w-full sm:w-[160px] justify-start text-left font-normal",
+                      !dateFrom && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Desde"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFrom}
+                    onSelect={setDateFrom}
+                    initialFocus
+                    locale={es}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "w-full sm:w-[160px] justify-start text-left font-normal",
+                      !dateTo && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, "dd/MM/yyyy") : "Hasta"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateTo}
+                    onSelect={setDateTo}
+                    initialFocus
+                    locale={es}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
         </div>
 
         {/* Contador y selector de paginación */}
