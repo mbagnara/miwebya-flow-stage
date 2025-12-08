@@ -52,13 +52,38 @@ const LeadView = () => {
       setEditableMessage(currentState?.recommendedMessage || "");
       
       // Si está en follow_up, intentar recuperar el estado anterior
-      if (isAuxiliaryState(lead.pipelineState)) {
-        // Buscar en las interacciones el último estado principal
-        const lastMainStateIndex = MAIN_PIPELINE_STATES.findIndex(s => 
-          interactions.some(i => i.message.includes(`Movido a: ${s.name}`))
+      if (isAuxiliaryState(lead.pipelineState) && !previousMainState) {
+        // Buscar el estado desde el que se movió a Follow Up
+        // Ordenar interacciones por fecha descendente para encontrar la más reciente
+        const sortedInteractions = [...interactions].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        if (lastMainStateIndex >= 0) {
-          setPreviousMainState(MAIN_PIPELINE_STATES[lastMainStateIndex].id);
+        
+        // Buscar la interacción donde se movió a Follow Up y ver qué estado tenía antes
+        for (const interaction of sortedInteractions) {
+          if (interaction.message === "Movido a: Follow Up") {
+            // Buscar la interacción anterior que indica el estado
+            const followUpIndex = interactions.findIndex(i => i.id === interaction.id);
+            // Buscar hacia atrás un estado principal
+            for (let i = followUpIndex - 1; i >= 0; i--) {
+              const msg = interactions[i].message;
+              const matchedState = MAIN_PIPELINE_STATES.find(s => 
+                msg.includes(`Movido a: ${s.name}`) || 
+                msg.includes(`avanzado a: ${s.name}`) ||
+                msg.includes(`volvió a: ${s.name}`)
+              );
+              if (matchedState) {
+                setPreviousMainState(matchedState.id);
+                break;
+              }
+            }
+            break;
+          }
+        }
+        
+        // Si no encontramos por interacciones, usar el primer estado como fallback
+        if (!previousMainState && MAIN_PIPELINE_STATES.length > 0) {
+          setPreviousMainState(MAIN_PIPELINE_STATES[0].id);
         }
       }
     }
@@ -266,7 +291,7 @@ const LeadView = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <PipelineProgress currentStateId={lead.pipelineState} />
+                <PipelineProgress currentStateId={lead.pipelineState} previousStateId={previousMainState} />
               </CardContent>
             </Card>
 
