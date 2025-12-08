@@ -71,8 +71,8 @@ const Dashboard = () => {
       }
       
       if (dateFilterMode === "range") {
-        // Si no hay ninguna fecha seleccionada, mostrar todos
-        if (!dateFrom && !dateTo) return true;
+        // Si no hay ninguna fecha seleccionada, no mostrar leads (requiere rango completo)
+        if (!dateFrom && !dateTo) return false;
         
         // Si solo hay fecha desde, filtrar desde esa fecha hasta hoy
         if (dateFrom && !dateTo) {
