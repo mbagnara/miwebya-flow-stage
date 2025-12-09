@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquarePlus } from "lucide-react";
+import { ArrowLeft, MessageSquarePlus, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,12 +30,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { Lead, Interaction } from "@/types/crm";
 import { DataRepository } from "@/lib/DataRepository";
 import { updateLeadTemperature } from "@/lib/temperature";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const dataRepository = new DataRepository();
 
@@ -44,6 +52,9 @@ const BulkFirstMessage = () => {
   const { toast } = useToast();
 
   const [stateFilter, setStateFilter] = useState<"contacto_inicial" | "all">("contacto_inicial");
+  const [dateFilterMode, setDateFilterMode] = useState<"hoy" | "rango">("hoy");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -63,10 +74,32 @@ const BulkFirstMessage = () => {
     loadLeads();
   }, []);
 
-  // Filtrar leads según el estado seleccionado
-  const filteredLeads = stateFilter === "contacto_inicial"
-    ? leads.filter(lead => lead.pipelineState === "contacto_inicial")
-    : leads;
+  // Filtrar leads según el estado y fecha seleccionados
+  const filteredLeads = leads.filter(lead => {
+    // Filtro por estado
+    if (stateFilter === "contacto_inicial" && lead.pipelineState !== "contacto_inicial") {
+      return false;
+    }
+
+    // Filtro por fecha
+    const leadDate = new Date(lead.createdAt);
+    if (dateFilterMode === "hoy") {
+      const today = new Date();
+      const start = startOfDay(today);
+      const end = endOfDay(today);
+      if (!isWithinInterval(leadDate, { start, end })) {
+        return false;
+      }
+    } else if (dateFilterMode === "rango" && dateFrom && dateTo) {
+      const start = startOfDay(dateFrom);
+      const end = endOfDay(dateTo);
+      if (!isWithinInterval(leadDate, { start, end })) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   // Manejar selección individual
   const handleSelectLead = (leadId: string, checked: boolean) => {
@@ -178,7 +211,7 @@ const BulkFirstMessage = () => {
   // Limpiar selección cuando cambia el filtro
   useEffect(() => {
     setSelectedLeadIds(new Set());
-  }, [stateFilter]);
+  }, [stateFilter, dateFilterMode, dateFrom, dateTo]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -194,22 +227,103 @@ const BulkFirstMessage = () => {
           </div>
         </div>
 
-        {/* Filtro de estado */}
-        <div className="mb-6">
-          <label className="text-sm font-medium mb-2 block">Filtrar por estado:</label>
-          <Select
-            value={stateFilter}
-            onValueChange={(value: "contacto_inicial" | "all") => setStateFilter(value)}
-          >
-            <SelectTrigger className="w-[250px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="contacto_inicial">Contacto Inicial</SelectItem>
-              <SelectItem value="all">Todos los estados</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Filtros */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Filtro de estado */}
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">Estado</label>
+            <Select
+              value={stateFilter}
+              onValueChange={(value: "contacto_inicial" | "all") => setStateFilter(value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="contacto_inicial">Contacto Inicial</SelectItem>
+                <SelectItem value="all">Todos los estados</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filtro de fecha */}
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-2 block">Fecha</label>
+            <ToggleGroup
+              type="single"
+              value={dateFilterMode}
+              onValueChange={(value) => {
+                if (value) setDateFilterMode(value as "hoy" | "rango");
+              }}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="hoy" aria-label="Hoy">
+                Hoy
+              </ToggleGroupItem>
+              <ToggleGroupItem value="rango" aria-label="Rango">
+                Rango
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </div>
+
+        {/* Date pickers para rango */}
+        {dateFilterMode === "rango" && (
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
+            <div className="flex-1">
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">Desde</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateFrom && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, "dd/MM/yyyy", { locale: es }) : "Seleccionar fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFrom}
+                    onSelect={setDateFrom}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex-1">
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">Hasta</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateTo && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, "dd/MM/yyyy", { locale: es }) : "Seleccionar fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateTo}
+                    onSelect={setDateTo}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        )}
 
         {/* Textarea para mensaje */}
         <div className="mb-6">
