@@ -348,6 +348,15 @@ const BulkFirstMessage = () => {
           </Button>
         </div>
 
+        {/* Contador de leads */}
+        <div className="mb-4 text-sm text-muted-foreground">
+          Mostrando <span className="font-semibold text-foreground">{selectedLeadIds.size}</span> de{" "}
+          <span className="font-semibold text-foreground">{filteredLeads.length}</span> leads
+          {leads.length !== filteredLeads.length && (
+            <span> ({leads.length} total)</span>
+          )}
+        </div>
+
         {/* Tabla de leads */}
         <div className="border rounded-lg">
           <Table>
