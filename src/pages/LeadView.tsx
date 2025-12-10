@@ -499,7 +499,7 @@ const LeadView = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <LeadTimeline interactions={interactions} />
+                <LeadTimeline interactions={interactions} onInteractionUpdated={loadLeadData} />
               </CardContent>
             </Card>
 

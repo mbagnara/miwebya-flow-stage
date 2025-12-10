@@ -115,6 +115,15 @@ export class DataRepository {
     localStorage.setItem(INTERACTIONS_KEY, JSON.stringify([...otherInteractions, ...interactions]));
   }
 
+  async updateInteraction(updatedInteraction: Interaction): Promise<void> {
+    const allInteractions = await this.getAllInteractions();
+    const index = allInteractions.findIndex(i => i.id === updatedInteraction.id);
+    if (index !== -1) {
+      allInteractions[index] = updatedInteraction;
+      localStorage.setItem(INTERACTIONS_KEY, JSON.stringify(allInteractions));
+    }
+  }
+
   async getInteractionsForLead(leadId: string): Promise<Interaction[]> {
     const data = localStorage.getItem(INTERACTIONS_KEY);
     const allInteractions: Interaction[] = data ? JSON.parse(data) : [];
