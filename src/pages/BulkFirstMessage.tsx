@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageSquarePlus, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,35 +74,38 @@ const BulkFirstMessage = () => {
     loadLeads();
   }, []);
 
-  // Filtrar leads según el estado y fecha seleccionados
-  const filteredLeads = leads.filter(lead => {
-    // Filtro por estado
-    if (stateFilter === "contacto_inicial" && lead.pipelineState !== "contacto_inicial") {
-      return false;
-    }
-
-    // Filtro por fecha
-    if (dateFilterMode === "todo") {
-      // No aplicar filtro de fecha, mostrar todos
-    } else if (dateFilterMode === "hoy") {
+  // PASO 1: Filtro por fecha (igual que Dashboard)
+  const dateFilteredLeads = useMemo(() => {
+    return leads.filter(lead => {
       const leadDate = new Date(lead.createdAt);
-      const today = new Date();
-      const start = startOfDay(today);
-      const end = endOfDay(today);
-      if (!isWithinInterval(leadDate, { start, end })) {
-        return false;
+      
+      if (dateFilterMode === "hoy") {
+        const today = new Date();
+        return isWithinInterval(leadDate, {
+          start: startOfDay(today),
+          end: endOfDay(today)
+        });
       }
-    } else if (dateFilterMode === "rango" && dateFrom && dateTo) {
-      const leadDate = new Date(lead.createdAt);
-      const start = startOfDay(dateFrom);
-      const end = endOfDay(dateTo);
-      if (!isWithinInterval(leadDate, { start, end })) {
-        return false;
+      
+      if (dateFilterMode === "rango" && dateFrom && dateTo) {
+        return isWithinInterval(leadDate, {
+          start: startOfDay(dateFrom),
+          end: endOfDay(dateTo)
+        });
       }
-    }
+      
+      // Modo "todo" - sin filtro de fecha
+      return true;
+    });
+  }, [leads, dateFilterMode, dateFrom, dateTo]);
 
-    return true;
-  });
+  // PASO 2: Filtro por estado (igual que Dashboard)
+  const filteredLeads = useMemo(() => {
+    return dateFilteredLeads.filter(lead => {
+      if (stateFilter === "all") return true;
+      return lead.pipelineState === stateFilter;
+    });
+  }, [dateFilteredLeads, stateFilter]);
 
   // Manejar selección individual
   const handleSelectLead = (leadId: string, checked: boolean) => {
