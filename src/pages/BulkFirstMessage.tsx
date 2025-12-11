@@ -52,7 +52,7 @@ const BulkFirstMessage = () => {
   const { toast } = useToast();
 
   const [stateFilter, setStateFilter] = useState<"contacto_inicial" | "all">("contacto_inicial");
-  const [dateFilterMode, setDateFilterMode] = useState<"hoy" | "rango">("hoy");
+  const [dateFilterMode, setDateFilterMode] = useState<"todo" | "hoy" | "rango">("todo");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -82,8 +82,10 @@ const BulkFirstMessage = () => {
     }
 
     // Filtro por fecha
-    const leadDate = new Date(lead.createdAt);
-    if (dateFilterMode === "hoy") {
+    if (dateFilterMode === "todo") {
+      // No aplicar filtro de fecha, mostrar todos
+    } else if (dateFilterMode === "hoy") {
+      const leadDate = new Date(lead.createdAt);
       const today = new Date();
       const start = startOfDay(today);
       const end = endOfDay(today);
@@ -91,6 +93,7 @@ const BulkFirstMessage = () => {
         return false;
       }
     } else if (dateFilterMode === "rango" && dateFrom && dateTo) {
+      const leadDate = new Date(lead.createdAt);
       const start = startOfDay(dateFrom);
       const end = endOfDay(dateTo);
       if (!isWithinInterval(leadDate, { start, end })) {
@@ -253,10 +256,13 @@ const BulkFirstMessage = () => {
               type="single"
               value={dateFilterMode}
               onValueChange={(value) => {
-                if (value) setDateFilterMode(value as "hoy" | "rango");
+                if (value) setDateFilterMode(value as "todo" | "hoy" | "rango");
               }}
               className="justify-start"
             >
+              <ToggleGroupItem value="todo" aria-label="Todo">
+                Todo
+              </ToggleGroupItem>
               <ToggleGroupItem value="hoy" aria-label="Hoy">
                 Hoy
               </ToggleGroupItem>
