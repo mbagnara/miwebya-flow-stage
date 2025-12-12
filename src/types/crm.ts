@@ -1,4 +1,4 @@
-export type LeadTemperature = "cold" | "warm" | "hot";
+export type LeadTemperature = "cold" | "cold-warm" | "warm" | "warm-hot" | "hot";
 
 export interface Lead {
   id: string;
