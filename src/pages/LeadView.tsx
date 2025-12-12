@@ -337,7 +337,9 @@ const LeadView = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cold">Cold</SelectItem>
+                      <SelectItem value="cold-warm">Cold-Warm</SelectItem>
                       <SelectItem value="warm">Warm</SelectItem>
+                      <SelectItem value="warm-hot">Warm-Hot</SelectItem>
                       <SelectItem value="hot">Hot</SelectItem>
                     </SelectContent>
                   </Select>
