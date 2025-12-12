@@ -402,8 +402,14 @@ const Dashboard = () => {
                 <ToggleGroupItem value="cold" size="sm" className="px-3">
                   Cold
                 </ToggleGroupItem>
+                <ToggleGroupItem value="cold-warm" size="sm" className="px-3">
+                  Cold-Warm
+                </ToggleGroupItem>
                 <ToggleGroupItem value="warm" size="sm" className="px-3">
                   Warm
+                </ToggleGroupItem>
+                <ToggleGroupItem value="warm-hot" size="sm" className="px-3">
+                  Warm-Hot
                 </ToggleGroupItem>
                 <ToggleGroupItem value="hot" size="sm" className="px-3">
                   Hot
