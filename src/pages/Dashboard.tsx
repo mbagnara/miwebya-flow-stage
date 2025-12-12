@@ -388,33 +388,19 @@ const Dashboard = () => {
             {/* Filtro por temperatura */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Temperatura</label>
-              <ToggleGroup
-                type="single"
-                value={temperatureFilter}
-                onValueChange={(value) => {
-                  if (value) setTemperatureFilter(value as LeadTemperature | "all");
-                }}
-                className="justify-start"
-              >
-                <ToggleGroupItem value="all" size="sm" className="px-3">
-                  Todos
-                </ToggleGroupItem>
-                <ToggleGroupItem value="cold" size="sm" className="px-3">
-                  Cold
-                </ToggleGroupItem>
-                <ToggleGroupItem value="cold-warm" size="sm" className="px-3">
-                  Cold-Warm
-                </ToggleGroupItem>
-                <ToggleGroupItem value="warm" size="sm" className="px-3">
-                  Warm
-                </ToggleGroupItem>
-                <ToggleGroupItem value="warm-hot" size="sm" className="px-3">
-                  Warm-Hot
-                </ToggleGroupItem>
-                <ToggleGroupItem value="hot" size="sm" className="px-3">
-                  Hot
-                </ToggleGroupItem>
-              </ToggleGroup>
+              <Select value={temperatureFilter} onValueChange={(value) => setTemperatureFilter(value as LeadTemperature | "all")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todas las temperaturas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las temperaturas</SelectItem>
+                  <SelectItem value="cold">Cold</SelectItem>
+                  <SelectItem value="cold-warm">Cold-Warm</SelectItem>
+                  <SelectItem value="warm">Warm</SelectItem>
+                  <SelectItem value="warm-hot">Warm-Hot</SelectItem>
+                  <SelectItem value="hot">Hot</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Filtro por estado del pipeline */}
