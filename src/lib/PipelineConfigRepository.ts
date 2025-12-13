@@ -8,13 +8,21 @@ export interface PipelineConfigStage {
 }
 
 const STORAGE_KEY = 'pipelineConfig';
-const MIGRATION_FLAG = 'pipeline_migrated_v3';
+const MIGRATION_FLAG = 'pipeline_migrated_v4';
 
-// Pipeline V3: 4 etapas principales + 1 auxiliar + 2 terminales
+// Pipeline V4: 5 etapas principales + 1 auxiliar + 2 terminales
 const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   {
-    id: "contacto_inicial",
+    id: "nuevo",
     orden: 1,
+    nombre: "Nuevo / Sin Contactar",
+    objetivo: "Preparar y enviar el primer mensaje al lead.",
+    accion: "Revisar información del lead y enviar primer contacto.",
+    avanzaCuando: "Se envía el primer mensaje al lead."
+  },
+  {
+    id: "contacto_inicial",
+    orden: 2,
     nombre: "Contacto Inicial",
     objetivo: "Obtener la primera respuesta del lead.",
     accion: "Enviar primer mensaje personalizado ofreciendo valor.",
@@ -22,7 +30,7 @@ const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   },
   {
     id: "valor_entregado",
-    orden: 2,
+    orden: 3,
     nombre: "Valor Entregado",
     objetivo: "Entregar valor tangible (video, análisis, recurso).",
     accion: "Enviar video personalizado o recurso de valor.",
@@ -30,7 +38,7 @@ const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   },
   {
     id: "interaccion_activa",
-    orden: 3,
+    orden: 4,
     nombre: "Interacción Activa",
     objetivo: "Mantener conversación activa y avanzar hacia demo.",
     accion: "Proponer llamada/demo basándose en el interés mostrado.",
@@ -38,7 +46,7 @@ const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   },
   {
     id: "demo_evaluacion",
-    orden: 4,
+    orden: 5,
     nombre: "Demo / Evaluación",
     objetivo: "Presentar propuesta y obtener decisión.",
     accion: "Realizar demo, enviar propuesta y hacer seguimiento.",
@@ -46,7 +54,7 @@ const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   },
   {
     id: "follow_up",
-    orden: 5,
+    orden: 6,
     nombre: "Follow Up",
     objetivo: "Reactivar leads que dejaron de responder.",
     accion: "Enviar mensaje de seguimiento sin ser invasivo.",
@@ -54,7 +62,7 @@ const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   },
   {
     id: "win",
-    orden: 6,
+    orden: 7,
     nombre: "Cliente",
     objetivo: "Formalizar inicio del proyecto.",
     accion: "Enviar bienvenida y próximos pasos.",
@@ -62,7 +70,7 @@ const DEFAULT_PIPELINE_CONFIG: PipelineConfigStage[] = [
   },
   {
     id: "lost",
-    orden: 7,
+    orden: 8,
     nombre: "Perdido / No Ahora",
     objetivo: "Cerrar el ciclo de forma profesional.",
     accion: "Enviar mensaje de despedida dejando puerta abierta.",

@@ -51,7 +51,7 @@ const BulkFirstMessage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [stateFilter, setStateFilter] = useState<"contacto_inicial" | "all">("contacto_inicial");
+  const [stateFilter, setStateFilter] = useState<"nuevo" | "contacto_inicial" | "all">("nuevo");
   const [dateFilterMode, setDateFilterMode] = useState<"todo" | "hoy" | "rango">("todo");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
@@ -172,16 +172,17 @@ const BulkFirstMessage = () => {
         };
         await dataRepository.addInteraction(newInteraction);
 
-        // 2. Obtener el lead y actualizar estado si está en contacto_inicial
+        // 2. Obtener el lead y actualizar estado si está en nuevo o contacto_inicial
         const lead = await dataRepository.getLeadById(leadId);
-        if (lead && lead.pipelineState === "contacto_inicial") {
+        if (lead && (lead.pipelineState === "nuevo" || lead.pipelineState === "contacto_inicial")) {
           // Obtener todas las interacciones del lead para calcular temperatura
           const allInteractions = await dataRepository.getInteractionsForLead(leadId);
           
-          // Actualizar estado al siguiente (valor_entregado)
+          // Actualizar estado al siguiente
+          const nextState = lead.pipelineState === "nuevo" ? "contacto_inicial" : "valor_entregado";
           let updatedLead: Lead = {
             ...lead,
-            pipelineState: "valor_entregado",
+            pipelineState: nextState,
           };
           
           // Actualizar temperatura automáticamente
@@ -240,12 +241,13 @@ const BulkFirstMessage = () => {
             <label className="text-sm font-medium text-muted-foreground mb-2 block">Estado</label>
             <Select
               value={stateFilter}
-              onValueChange={(value: "contacto_inicial" | "all") => setStateFilter(value)}
+              onValueChange={(value: "nuevo" | "contacto_inicial" | "all") => setStateFilter(value)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="nuevo">Nuevo / Sin Contactar</SelectItem>
                 <SelectItem value="contacto_inicial">Contacto Inicial</SelectItem>
                 <SelectItem value="all">Todos los estados</SelectItem>
               </SelectContent>

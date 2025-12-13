@@ -1,7 +1,16 @@
 import { PipelineState } from "@/types/crm";
 
-// Pipeline V3: 4 etapas principales + 1 auxiliar + 2 terminales
+// Pipeline V3: 5 etapas principales + 1 auxiliar + 2 terminales
 export const PIPELINE_STATES: PipelineState[] = [
+  {
+    id: "nuevo",
+    name: "Nuevo / Sin Contactar",
+    recommendedMessage: "Hola, ¿cómo estás? Soy Mario de MiWebYa.\nVi tu negocio y noté varias oportunidades para mejorar tu presencia en Google.\n¿Te gustaría que te muestre cómo podemos ayudarte?",
+    nextStateId: "contacto_inicial",
+    objective: "Preparar y enviar el primer mensaje al lead.",
+    action: "Revisar información del lead y enviar primer contacto.",
+    advanceCriteria: "Se envía el primer mensaje al lead."
+  },
   {
     id: "contacto_inicial",
     name: "Contacto Inicial",
