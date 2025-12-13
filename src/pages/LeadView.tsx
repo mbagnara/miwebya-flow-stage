@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Lead, Interaction, LeadTemperature } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
 import { getPipelineState, getNextState, getPreviousState, isTerminalState, isAuxiliaryState, MAIN_PIPELINE_STATES } from "@/lib/pipeline";
@@ -13,7 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { PipelineProgress } from "@/components/PipelineProgress";
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download } from "lucide-react";
+import { ScheduleNextContactModal } from "@/components/ScheduleNextContactModal";
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock } from "lucide-react";
 import { downloadLeadJSONL } from "@/lib/leadExporter";
 import { toast } from "@/hooks/use-toast";
 
@@ -27,6 +30,7 @@ const LeadView = () => {
   const [incomingMessage, setIncomingMessage] = useState("");
   const [interactionSource, setInteractionSource] = useState<"lead" | "yo">("lead");
   const [previousMainState, setPreviousMainState] = useState<string | null>(null);
+  const [showNextContactModal, setShowNextContactModal] = useState(false);
 
   const loadLeadData = async () => {
     if (!id) return;
@@ -115,7 +119,47 @@ const LeadView = () => {
 
     setIncomingMessage("");
     setInteractionSource("lead");
-    loadLeadData();
+    await loadLeadData();
+
+    // Abrir modal para programar próximo contacto
+    setShowNextContactModal(true);
+  };
+
+  const handleSaveNextContact = async (nextActionNote: string, nextContactDate: string) => {
+    if (!lead) return;
+
+    // 1. Actualizar el objeto LEAD con los nuevos campos
+    const updatedLead: Lead = {
+      ...lead,
+      nextActionNote,
+      nextContactDate
+    };
+    await dataRepository.updateLead(updatedLead);
+    setLead(updatedLead);
+
+    // 2. Agregar línea de auditoría al timeline
+    const formattedDate = format(new Date(nextContactDate), "yyyy-MM-dd");
+    const auditInteraction: Interaction = {
+      id: `int-audit-${Date.now()}`,
+      leadId: lead.id,
+      message: `Se programó próxima acción para ${formattedDate}: "${nextActionNote}"`,
+      createdAt: new Date().toISOString(),
+      direction: "outgoing"
+    };
+    await dataRepository.addInteraction(auditInteraction);
+
+    // 3. Cerrar modal y refrescar
+    setShowNextContactModal(false);
+    await loadLeadData();
+
+    toast({
+      title: "Próximo contacto programado",
+      description: `Programado para ${format(new Date(nextContactDate), "PPP", { locale: es })}`
+    });
+  };
+
+  const handleCloseNextContactModal = () => {
+    setShowNextContactModal(false);
   };
 
   const handleTemperatureChange = async (newTemperature: LeadTemperature) => {
@@ -344,6 +388,21 @@ const LeadView = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Próxima acción - solo lectura */}
+                {(lead.nextActionNote || lead.nextContactDate) && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CalendarClock className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Próxima acción</span>
+                    </div>
+                    <p className="text-sm">{lead.nextActionNote || "—"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Fecha: {lead.nextContactDate 
+                        ? format(new Date(lead.nextContactDate), "PPP", { locale: es }) 
+                        : "—"}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -548,6 +607,13 @@ const LeadView = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal para programar próximo contacto */}
+      <ScheduleNextContactModal
+        isOpen={showNextContactModal}
+        onClose={handleCloseNextContactModal}
+        onSave={handleSaveNextContact}
+      />
     </div>
   );
 };
