@@ -209,7 +209,7 @@ export function ImportCSVDialog({ onImportComplete, trigger }: ImportCSVDialogPr
           phone: normalizedPhone,
           city: "",
           businessType: rubro.trim(),
-          pipelineState: "contacto_inicial",
+          pipelineState: "nuevo",
           createdAt: new Date().toISOString(),
           temperature: "cold",
           temperatureManual: false
@@ -272,7 +272,7 @@ export function ImportCSVDialog({ onImportComplete, trigger }: ImportCSVDialogPr
               <li>• Todos los campos son obligatorios</li>
               <li>• Los teléfonos se normalizan automáticamente</li>
               <li>• Los duplicados se detectan por teléfono</li>
-              <li>• Los leads se crean en estado "Contacto Inicial" y temperatura "Cold"</li>
+              <li>• Los leads se crean en estado "Nuevo / Sin Contactar" y temperatura "Cold"</li>
             </ul>
           </div>
 
