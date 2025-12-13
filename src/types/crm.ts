@@ -10,6 +10,8 @@ export interface Lead {
   createdAt: string;
   temperature: LeadTemperature;
   temperatureManual: boolean;
+  nextContactDate?: string;
+  nextActionNote?: string;
 }
 
 export interface PipelineState {
