@@ -4,7 +4,8 @@ import { dataRepository } from "@/lib/DataRepository";
 import { MAIN_PIPELINE_STATES, PIPELINE_STATES } from "@/lib/pipeline";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
 import { ImportCSVDialog } from "@/components/ImportCSVDialog";
-import { LeadsTable } from "@/components/LeadsTable";
+import { ActionTable } from "@/components/ActionTable";
+import { PendingActionsCards } from "@/components/PendingActionsCards";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp } from "lucide-react";
+import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { format, startOfDay, endOfDay, isWithinInterval, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { getLeadUrgency, UrgencyType } from "@/lib/urgency";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,13 +39,14 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [temperatureFilter, setTemperatureFilter] = useState<LeadTemperature | "all">("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
+  const [actionFilter, setActionFilter] = useState<UrgencyType | "all">("all");
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   
   // Estado del filtro de fecha
-  const [dateFilterMode, setDateFilterMode] = useState<DateFilterMode>("today");
+  const [dateFilterMode, setDateFilterMode] = useState<DateFilterMode>("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
@@ -61,11 +64,21 @@ const Dashboard = () => {
     loadLeads();
   }, []);
 
-  // Filtrar por fecha primero
+  // Filtrar por urgencia de acción primero
+  const actionFilteredLeads = useMemo(() => {
+    if (actionFilter === "all") return leads;
+    
+    return leads.filter(lead => {
+      const urgency = getLeadUrgency(lead);
+      return urgency === actionFilter;
+    });
+  }, [leads, actionFilter]);
+
+  // Filtrar por fecha
   const dateFilteredLeads = useMemo(() => {
     const today = new Date();
     
-    return leads.filter(lead => {
+    return actionFilteredLeads.filter(lead => {
       const leadDate = new Date(lead.createdAt);
       
       if (dateFilterMode === "today") {
@@ -73,20 +86,16 @@ const Dashboard = () => {
       }
       
       if (dateFilterMode === "range") {
-        // Si no hay ninguna fecha seleccionada, no mostrar leads (requiere rango completo)
         if (!dateFrom && !dateTo) return false;
         
-        // Si solo hay fecha desde, filtrar desde esa fecha hasta hoy
         if (dateFrom && !dateTo) {
           return leadDate >= startOfDay(dateFrom) && leadDate <= endOfDay(today);
         }
         
-        // Si solo hay fecha hasta, filtrar desde el inicio hasta esa fecha
         if (!dateFrom && dateTo) {
           return leadDate <= endOfDay(dateTo);
         }
         
-        // Si hay ambas fechas
         if (dateFrom && dateTo) {
           return isWithinInterval(leadDate, {
             start: startOfDay(dateFrom),
@@ -95,10 +104,9 @@ const Dashboard = () => {
         }
       }
       
-      // Modo "all" - sin filtro de fecha
       return true;
     });
-  }, [leads, dateFilterMode, dateFrom, dateTo]);
+  }, [actionFilteredLeads, dateFilterMode, dateFrom, dateTo]);
 
   // Luego aplicar filtros de temperatura y estado
   const filteredLeads = useMemo(() => {
@@ -124,7 +132,7 @@ const Dashboard = () => {
   // Reset a página 1 cuando cambia el filtro
   useEffect(() => {
     setCurrentPage(1);
-  }, [temperatureFilter, stateFilter, itemsPerPage, dateFilterMode, dateFrom, dateTo]);
+  }, [temperatureFilter, stateFilter, actionFilter, itemsPerPage, dateFilterMode, dateFrom, dateTo]);
 
   const handleExportLeads = async () => {
     try {
@@ -199,10 +207,11 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
+        {/* Header con botones - SIN CAMBIOS */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">MiWebYa CRM</h1>
-            <p className="text-muted-foreground mt-1">Gestiona tus leads y pipeline de ventas</p>
+            <p className="text-muted-foreground mt-1">Tu día de ventas</p>
           </div>
           <div className="flex gap-2">
             <Button 
@@ -303,62 +312,53 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Pipeline Overview Card */}
+        {/* CAPA 1: Bloque Acciones Pendientes */}
         {!loading && leads.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Vista General del Pipeline</CardTitle>
-              <CardDescription>
-                Distribución de tus {dateFilteredLeads.length} leads en las diferentes etapas
-                {dateFilterMode === "today" && " (hoy)"}
-                {dateFilterMode === "range" && dateFrom && dateTo && ` (${format(dateFrom, "dd/MM/yyyy")} - ${format(dateTo, "dd/MM/yyyy")})`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {MAIN_PIPELINE_STATES.map(state => {
-                  const count = dateFilteredLeads.filter(lead => lead.pipelineState === state.id).length;
-                  return (
-                    <div 
-                      key={state.id} 
-                      className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                    >
-                      <p className="text-2xl font-bold text-primary mb-1">{count}</p>
-                      <p className="text-xs text-muted-foreground leading-tight">{state.name}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                <div className="p-4 rounded-lg border bg-yellow-500/10 border-yellow-500/20">
-                  <p className="text-2xl font-bold text-yellow-600 mb-1">
-                    {dateFilteredLeads.filter(l => l.pipelineState === "follow_up").length}
-                  </p>
-                  <p className="text-xs text-yellow-700 leading-tight">Follow Up</p>
-                </div>
-                <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/20">
-                  <p className="text-2xl font-bold text-green-600 mb-1">
-                    {dateFilteredLeads.filter(l => l.pipelineState === "win").length}
-                  </p>
-                  <p className="text-xs text-green-700 leading-tight">Cliente (Win)</p>
-                </div>
-                <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/20">
-                  <p className="text-2xl font-bold text-red-600 mb-1">
-                    {dateFilteredLeads.filter(l => l.pipelineState === "lost").length}
-                  </p>
-                  <p className="text-xs text-red-700 leading-tight">Perdido (Lost)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PendingActionsCards 
+            leads={leads}
+            activeFilter={actionFilter}
+            onFilterChange={setActionFilter}
+          />
         )}
 
-        {/* Filtros */}
+        {/* CAPA 3: Filtros orientados a ejecución */}
         <div className="bg-muted/30 rounded-lg border p-4 mb-6">
+          {/* Filtros prioritarios */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button
+              variant={actionFilter === "overdue" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActionFilter(actionFilter === "overdue" ? "all" : "overdue")}
+              className="gap-1"
+            >
+              <Flame className="h-3 w-3" />
+              Solo vencidas
+            </Button>
+            <Button
+              variant={actionFilter === "today" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActionFilter(actionFilter === "today" ? "all" : "today")}
+              className="gap-1"
+            >
+              <CalendarCheck className="h-3 w-3" />
+              Acciones de hoy
+            </Button>
+            <Button
+              variant={actionFilter === "no-action" ? "destructive" : "outline"}
+              size="sm"
+              onClick={() => setActionFilter(actionFilter === "no-action" ? "all" : "no-action")}
+              className="gap-1"
+            >
+              <AlertTriangle className="h-3 w-3" />
+              Sin próxima acción
+            </Button>
+          </div>
+
+          {/* Filtros secundarios */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Filtro de fecha */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Fecha</label>
+              <label className="text-sm font-medium text-muted-foreground">Fecha de creación</label>
               <ToggleGroup
                 type="single"
                 value={dateFilterMode}
@@ -422,7 +422,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Date pickers para modo Rango - fila separada */}
+          {/* Date pickers para modo Rango */}
           {dateFilterMode === "range" && (
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-4 pt-4 border-t border-border/50">
               <Popover>
@@ -483,8 +483,8 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-muted-foreground">
             Mostrando <span className="font-semibold text-foreground">{paginatedLeads.length}</span> de{" "}
-            <span className="font-semibold text-foreground">{totalLeads}</span> leads
-            {dateFilterMode !== "all" && (
+            <span className="font-semibold text-foreground">{totalLeads}</span> acciones pendientes
+            {(dateFilterMode !== "all" || actionFilter !== "all") && (
               <span className="text-muted-foreground"> ({totalLeadsWithoutDateFilter} total)</span>
             )}
           </div>
@@ -534,12 +534,63 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* CAPA 2: Tabla de Acciones */}
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">
-            Cargando leads...
+            Cargando acciones pendientes...
           </div>
         ) : (
-          <LeadsTable leads={paginatedLeads} onLeadUpdated={loadLeads} />
+          <ActionTable leads={paginatedLeads} />
+        )}
+
+        {/* CAPA 4: Pipeline Overview (movido abajo) */}
+        {!loading && leads.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Visión general del pipeline</CardTitle>
+              <CardDescription>
+                Distribución de tus {dateFilteredLeads.length} leads en las diferentes etapas
+                {dateFilterMode === "today" && " (hoy)"}
+                {dateFilterMode === "range" && dateFrom && dateTo && ` (${format(dateFrom, "dd/MM/yyyy")} - ${format(dateTo, "dd/MM/yyyy")})`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {MAIN_PIPELINE_STATES.map(state => {
+                  const count = dateFilteredLeads.filter(lead => lead.pipelineState === state.id).length;
+                  return (
+                    <div 
+                      key={state.id} 
+                      className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <p className="text-2xl font-bold text-primary mb-1">{count}</p>
+                      <p className="text-xs text-muted-foreground leading-tight">{state.name}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <div className="p-4 rounded-lg border bg-yellow-500/10 border-yellow-500/20">
+                  <p className="text-2xl font-bold text-yellow-600 mb-1">
+                    {dateFilteredLeads.filter(l => l.pipelineState === "follow_up").length}
+                  </p>
+                  <p className="text-xs text-yellow-700 leading-tight">Acción vencida</p>
+                </div>
+                <div className="p-4 rounded-lg border bg-green-500/10 border-green-500/20">
+                  <p className="text-2xl font-bold text-green-600 mb-1">
+                    {dateFilteredLeads.filter(l => l.pipelineState === "win").length}
+                  </p>
+                  <p className="text-xs text-green-700 leading-tight">Cliente (Win)</p>
+                </div>
+                <div className="p-4 rounded-lg border bg-red-500/10 border-red-500/20">
+                  <p className="text-2xl font-bold text-red-600 mb-1">
+                    {dateFilteredLeads.filter(l => l.pipelineState === "lost").length}
+                  </p>
+                  <p className="text-xs text-red-700 leading-tight">Perdido (Lost)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 
