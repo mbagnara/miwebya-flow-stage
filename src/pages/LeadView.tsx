@@ -388,21 +388,32 @@ const LeadView = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* Próxima acción - solo lectura */}
-                {(lead.nextActionNote || lead.nextContactDate) && (
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CalendarClock className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Próxima acción</span>
-                    </div>
-                    <p className="text-sm">{lead.nextActionNote || "—"}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Fecha: {lead.nextContactDate 
-                        ? format(new Date(lead.nextContactDate), "PPP", { locale: es }) 
-                        : "—"}
-                    </p>
+                {/* Próxima acción - con indicador de urgencia */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CalendarClock className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Acción comprometida</span>
                   </div>
-                )}
+                  {lead.nextActionNote || lead.nextContactDate ? (
+                    <>
+                      <p className="text-sm">{lead.nextActionNote || "—"}</p>
+                      <p className={`text-xs mt-1 ${
+                        lead.nextContactDate && new Date(lead.nextContactDate) < new Date() 
+                          ? "text-red-600 font-medium" 
+                          : "text-muted-foreground"
+                      }`}>
+                        Fecha: {lead.nextContactDate 
+                          ? format(new Date(lead.nextContactDate), "PPP", { locale: es }) 
+                          : "—"}
+                        {lead.nextContactDate && new Date(lead.nextContactDate) < new Date() && " (Vencido)"}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      ⚠️ Sin acción definida
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
