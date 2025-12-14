@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle } from "lucide-react";
+import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle, Search, X, Phone } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { format, startOfDay, endOfDay, isWithinInterval, isSameDay } from "date-fns";
@@ -49,6 +50,9 @@ const Dashboard = () => {
   const [dateFilterMode, setDateFilterMode] = useState<DateFilterMode>("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  
+  // Estado del filtro por teléfono (prioridad máxima)
+  const [phoneSearch, setPhoneSearch] = useState("");
 
   const loadLeads = async () => {
     setLoading(true);
@@ -117,8 +121,30 @@ const Dashboard = () => {
     });
   }, [dateFilteredLeads, temperatureFilter, stateFilter]);
 
+  // Filtro por teléfono (PRIORIDAD MÁXIMA - ignora todos los demás filtros)
+  const phoneFilteredLeads = useMemo(() => {
+    if (!phoneSearch.trim()) return null;
+    
+    const normalizedSearch = phoneSearch.replace(/\D/g, '');
+    if (!normalizedSearch) return null;
+    
+    return leads.filter(lead => {
+      if (!lead.phone) return false;
+      const normalizedPhone = lead.phone.replace(/\D/g, '');
+      return normalizedPhone.includes(normalizedSearch);
+    });
+  }, [leads, phoneSearch]);
+
+  // Leads finales: teléfono tiene prioridad sobre otros filtros
+  const finalLeads = useMemo(() => {
+    if (phoneFilteredLeads !== null) {
+      return phoneFilteredLeads;
+    }
+    return filteredLeads;
+  }, [phoneFilteredLeads, filteredLeads]);
+
   // Paginación
-  const totalLeads = filteredLeads.length;
+  const totalLeads = finalLeads.length;
   const totalLeadsWithoutDateFilter = leads.filter(lead => {
     const matchesTemperature = temperatureFilter === "all" || lead.temperature === temperatureFilter;
     const matchesState = stateFilter === "all" || lead.pipelineState === stateFilter;
@@ -127,12 +153,12 @@ const Dashboard = () => {
   const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(totalLeads / itemsPerPage);
   const startIndex = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
   const endIndex = itemsPerPage === -1 ? totalLeads : startIndex + itemsPerPage;
-  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+  const paginatedLeads = finalLeads.slice(startIndex, endIndex);
 
   // Reset a página 1 cuando cambia el filtro
   useEffect(() => {
     setCurrentPage(1);
-  }, [temperatureFilter, stateFilter, actionFilter, itemsPerPage, dateFilterMode, dateFrom, dateTo]);
+  }, [temperatureFilter, stateFilter, actionFilter, itemsPerPage, dateFilterMode, dateFrom, dateTo, phoneSearch]);
 
   const handleExportLeads = async () => {
     try {
@@ -323,6 +349,39 @@ const Dashboard = () => {
 
         {/* CAPA 3: Filtros orientados a ejecución */}
         <div className="bg-muted/30 rounded-lg border p-4 mb-6">
+          {/* Búsqueda rápida por teléfono */}
+          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-border/50">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Buscar por teléfono..."
+              value={phoneSearch}
+              onChange={(e) => setPhoneSearch(e.target.value)}
+              className="max-w-xs"
+            />
+            {phoneSearch && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setPhoneSearch("")}
+                className="gap-1"
+              >
+                <X className="h-4 w-4" />
+                Limpiar
+              </Button>
+            )}
+          </div>
+
+          {/* Indicador cuando búsqueda por teléfono está activa */}
+          {phoneSearch && (
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-2 mb-4 flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              <span className="text-sm text-primary">
+                Buscando por teléfono: "{phoneSearch}" — Los demás filtros están desactivados
+              </span>
+            </div>
+          )}
+
           {/* Filtros prioritarios */}
           <div className="flex flex-wrap gap-2 mb-4">
             <Button
