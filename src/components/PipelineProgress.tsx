@@ -1,14 +1,23 @@
 import { Check, Pause, Trophy, XCircle } from "lucide-react";
 import { MAIN_PIPELINE_STATES, getPipelineState, isTerminalState, isAuxiliaryState } from "@/lib/pipeline";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PipelineProgressProps {
   currentStateId: string;
   variant?: "full" | "compact";
-  previousStateId?: string | null; // Estado anterior cuando está en Follow Up
+  previousStateId?: string | null;
+  interactive?: boolean;
+  onStateClick?: (stateId: string, stateName: string) => void;
 }
 
-export const PipelineProgress = ({ currentStateId, variant = "full", previousStateId }: PipelineProgressProps) => {
+export const PipelineProgress = ({ 
+  currentStateId, 
+  variant = "full", 
+  previousStateId,
+  interactive = false,
+  onStateClick
+}: PipelineProgressProps) => {
   const currentState = getPipelineState(currentStateId);
   const isTerminal = isTerminalState(currentStateId);
   const isAuxiliary = isAuxiliaryState(currentStateId);
@@ -102,20 +111,37 @@ export const PipelineProgress = ({ currentStateId, variant = "full", previousSta
                 
                 {/* Stage indicator */}
                 <div className="flex flex-col items-center gap-2 relative z-10">
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300",
-                      isCurrent && "border-primary bg-primary text-primary-foreground scale-110 shadow-lg",
-                      isCompleted && "border-primary bg-primary text-primary-foreground",
-                      isPending && "border-muted bg-background text-muted-foreground"
-                    )}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <span className="text-sm font-semibold">{index + 1}</span>
-                    )}
-                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          onClick={() => {
+                            if (interactive && !isCurrent && onStateClick) {
+                              onStateClick(state.id, state.name);
+                            }
+                          }}
+                          className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300",
+                            isCurrent && "border-primary bg-primary text-primary-foreground scale-110 shadow-lg",
+                            isCompleted && "border-primary bg-primary text-primary-foreground",
+                            isPending && "border-muted bg-background text-muted-foreground",
+                            interactive && !isCurrent && "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/50"
+                          )}
+                        >
+                          {isCompleted ? (
+                            <Check className="h-5 w-5" />
+                          ) : (
+                            <span className="text-sm font-semibold">{index + 1}</span>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      {interactive && !isCurrent && (
+                        <TooltipContent>
+                          <p>Mover a {state.name}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                   <div className="text-center">
                     <p
                       className={cn(
@@ -143,23 +169,40 @@ export const PipelineProgress = ({ currentStateId, variant = "full", previousSta
             const isPending = !isTerminal && index > currentIndex;
 
             return (
-              <div key={state.id} className="flex items-start gap-3">
+            <div key={state.id} className="flex items-start gap-3">
                 {/* Stage indicator */}
                 <div className="relative">
-                  <div
-                    className={cn(
-                      "w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 flex-shrink-0",
-                      isCurrent && "border-primary bg-primary text-primary-foreground scale-110 shadow-lg",
-                      isCompleted && "border-primary bg-primary text-primary-foreground",
-                      isPending && "border-muted bg-background text-muted-foreground"
-                    )}
-                  >
-                    {isCompleted ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <span className="text-sm font-semibold">{index + 1}</span>
-                    )}
-                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          onClick={() => {
+                            if (interactive && !isCurrent && onStateClick) {
+                              onStateClick(state.id, state.name);
+                            }
+                          }}
+                          className={cn(
+                            "w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 flex-shrink-0",
+                            isCurrent && "border-primary bg-primary text-primary-foreground scale-110 shadow-lg",
+                            isCompleted && "border-primary bg-primary text-primary-foreground",
+                            isPending && "border-muted bg-background text-muted-foreground",
+                            interactive && !isCurrent && "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-primary/50"
+                          )}
+                        >
+                          {isCompleted ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <span className="text-sm font-semibold">{index + 1}</span>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      {interactive && !isCurrent && (
+                        <TooltipContent>
+                          <p>Mover a {state.name}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                   
                   {/* Connector line */}
                   {index < MAIN_PIPELINE_STATES.length - 1 && (

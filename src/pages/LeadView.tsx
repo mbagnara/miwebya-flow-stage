@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { ScheduleNextContactModal } from "@/components/ScheduleNextContactModal";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock, Pencil } from "lucide-react";
 import { downloadLeadJSONL } from "@/lib/leadExporter";
 import { toast } from "@/hooks/use-toast";
@@ -32,6 +33,7 @@ const LeadView = () => {
   const [previousMainState, setPreviousMainState] = useState<string | null>(null);
   const [showNextContactModal, setShowNextContactModal] = useState(false);
   const [showEditActionModal, setShowEditActionModal] = useState(false);
+  const [pendingStateChange, setPendingStateChange] = useState<{ stateId: string; stateName: string } | null>(null);
 
   const loadLeadData = async () => {
     if (!id) return;
@@ -276,6 +278,17 @@ const LeadView = () => {
     loadLeadData();
   };
 
+  const handleStateClickRequest = (stateId: string, stateName: string) => {
+    if (!lead || lead.pipelineState === stateId) return;
+    setPendingStateChange({ stateId, stateName });
+  };
+
+  const confirmStateChange = async () => {
+    if (!pendingStateChange) return;
+    await handleMoveToState(pendingStateChange.stateId, pendingStateChange.stateName);
+    setPendingStateChange(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -336,7 +349,12 @@ const LeadView = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <PipelineProgress currentStateId={lead.pipelineState} previousStateId={previousMainState} />
+                <PipelineProgress 
+                  currentStateId={lead.pipelineState} 
+                  previousStateId={previousMainState}
+                  interactive={!isTerminal}
+                  onStateClick={handleStateClickRequest}
+                />
               </CardContent>
             </Card>
 
@@ -648,6 +666,25 @@ const LeadView = () => {
         initialNote={lead.nextActionNote}
         initialDate={lead.nextContactDate}
       />
+
+      {/* AlertDialog para confirmar cambio de estado del pipeline */}
+      <AlertDialog open={!!pendingStateChange} onOpenChange={(open) => !open && setPendingStateChange(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cambiar estado del pipeline?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El lead será movido de "{currentState?.name}" a "{pendingStateChange?.stateName}".
+              Esta acción quedará registrada en el historial.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmStateChange}>
+              Confirmar cambio
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
