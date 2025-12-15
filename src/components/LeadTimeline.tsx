@@ -1,7 +1,7 @@
 import { Interaction } from "@/types/crm";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { MessageSquare, UserCircle, Pencil, Check, X, CalendarIcon } from "lucide-react";
+import { MessageSquare, UserCircle, Pencil, Check, X, CalendarIcon, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useState } from "react";
 import { dataRepository } from "@/lib/DataRepository";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface LeadTimelineProps {
   interactions: Interaction[];
@@ -22,6 +32,7 @@ export const LeadTimeline = ({ interactions, onInteractionUpdated }: LeadTimelin
   const [editMessage, setEditMessage] = useState("");
   const [editDate, setEditDate] = useState<Date | undefined>(undefined);
   const [editTime, setEditTime] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const startEditing = (interaction: Interaction) => {
     const date = new Date(interaction.createdAt);
@@ -56,6 +67,13 @@ export const LeadTimeline = ({ interactions, onInteractionUpdated }: LeadTimelin
     onInteractionUpdated?.();
   };
 
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    await dataRepository.deleteInteraction(deletingId);
+    setDeletingId(null);
+    onInteractionUpdated?.();
+  };
+
   if (interactions.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -66,6 +84,23 @@ export const LeadTimeline = ({ interactions, onInteractionUpdated }: LeadTimelin
 
   return (
     <div className="space-y-4">
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar interacción?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La interacción será eliminada permanentemente del historial.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {interactions.map((interaction, index) => {
         const direction = interaction.direction || "outgoing";
         const isIncoming = direction === "incoming";
@@ -171,14 +206,24 @@ export const LeadTimeline = ({ interactions, onInteractionUpdated }: LeadTimelin
                         Lead
                       </Badge>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 ml-auto"
-                      onClick={() => startEditing(interaction)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-1 ml-auto">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => startEditing(interaction)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        onClick={() => setDeletingId(interaction.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                   <div className={`border rounded-lg p-4 ${
                     isIncoming 

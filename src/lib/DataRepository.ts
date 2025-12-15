@@ -124,6 +124,12 @@ export class DataRepository {
     }
   }
 
+  async deleteInteraction(interactionId: string): Promise<void> {
+    const allInteractions = await this.getAllInteractions();
+    const filteredInteractions = allInteractions.filter(i => i.id !== interactionId);
+    localStorage.setItem(INTERACTIONS_KEY, JSON.stringify(filteredInteractions));
+  }
+
   async getInteractionsForLead(leadId: string): Promise<Interaction[]> {
     const data = localStorage.getItem(INTERACTIONS_KEY);
     const allInteractions: Interaction[] = data ? JSON.parse(data) : [];
