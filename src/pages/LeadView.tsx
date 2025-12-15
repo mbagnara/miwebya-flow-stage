@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { ScheduleNextContactModal } from "@/components/ScheduleNextContactModal";
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock, Pencil } from "lucide-react";
 import { downloadLeadJSONL } from "@/lib/leadExporter";
 import { toast } from "@/hooks/use-toast";
 
@@ -31,6 +31,7 @@ const LeadView = () => {
   const [interactionSource, setInteractionSource] = useState<"lead" | "yo">("lead");
   const [previousMainState, setPreviousMainState] = useState<string | null>(null);
   const [showNextContactModal, setShowNextContactModal] = useState(false);
+  const [showEditActionModal, setShowEditActionModal] = useState(false);
 
   const loadLeadData = async () => {
     if (!id) return;
@@ -390,16 +391,26 @@ const LeadView = () => {
                 </div>
                 {/* Próxima acción - con indicador de urgencia */}
                 <div className="pt-4 border-t">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CalendarClock className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Acción comprometida</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarClock className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Acción comprometida</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setShowEditActionModal(true)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
                   </div>
                   {lead.nextActionNote || lead.nextContactDate ? (
                     <>
                       <p className="text-sm">{lead.nextActionNote || "—"}</p>
                       <p className={`text-xs mt-1 ${
                         lead.nextContactDate && new Date(lead.nextContactDate) < new Date() 
-                          ? "text-red-600 font-medium" 
+                          ? "text-destructive font-medium" 
                           : "text-muted-foreground"
                       }`}>
                         Fecha: {lead.nextContactDate 
@@ -619,11 +630,23 @@ const LeadView = () => {
         </div>
       </div>
 
-      {/* Modal para programar próximo contacto */}
+      {/* Modal para programar próximo contacto (después de interacción) */}
       <ScheduleNextContactModal
         isOpen={showNextContactModal}
         onClose={handleCloseNextContactModal}
         onSave={handleSaveNextContact}
+      />
+
+      {/* Modal para editar acción comprometida */}
+      <ScheduleNextContactModal
+        isOpen={showEditActionModal}
+        onClose={() => setShowEditActionModal(false)}
+        onSave={(note, date) => {
+          handleSaveNextContact(note, date);
+          setShowEditActionModal(false);
+        }}
+        initialNote={lead.nextActionNote}
+        initialDate={lead.nextContactDate}
       />
     </div>
   );

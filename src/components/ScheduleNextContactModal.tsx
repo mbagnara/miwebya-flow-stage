@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -23,6 +23,8 @@ interface ScheduleNextContactModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (nextActionNote: string, nextContactDate: string) => void;
+  initialNote?: string;
+  initialDate?: string;
 }
 
 const MAX_NOTE_LENGTH = 140;
@@ -31,6 +33,8 @@ export function ScheduleNextContactModal({
   isOpen,
   onClose,
   onSave,
+  initialNote,
+  initialDate,
 }: ScheduleNextContactModalProps) {
   const [nextActionNote, setNextActionNote] = useState("");
   const [nextContactDate, setNextContactDate] = useState<Date | undefined>(
@@ -38,6 +42,16 @@ export function ScheduleNextContactModal({
   );
   const [noteError, setNoteError] = useState("");
   const [dateError, setDateError] = useState("");
+
+  // Inicializar con valores existentes cuando se abre el modal
+  useEffect(() => {
+    if (isOpen) {
+      setNextActionNote(initialNote || "");
+      setNextContactDate(initialDate ? new Date(initialDate) : addDays(new Date(), 2));
+      setNoteError("");
+      setDateError("");
+    }
+  }, [isOpen, initialNote, initialDate]);
 
   const resetForm = () => {
     setNextActionNote("");
