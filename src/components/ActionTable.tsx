@@ -1,21 +1,54 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lead } from "@/types/crm";
+import { Lead, SmsContactStatus } from "@/types/crm";
 import { getPipelineState } from "@/lib/pipeline";
 import { getTemperatureColor, getTemperatureLabel } from "@/lib/temperature";
 import { getLeadUrgency, getUrgencyConfig, formatShortDate } from "@/lib/urgency";
 import { useNavigate } from "react-router-dom";
-import { Pencil, CheckCircle, AlertTriangle } from "lucide-react";
+import { Pencil, CheckCircle, AlertTriangle, MessageSquare, MessageSquareOff } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChangeSmsStatusModal } from "@/components/ChangeSmsStatusModal";
+import { dataRepository } from "@/lib/DataRepository";
+import { useToast } from "@/hooks/use-toast";
 
 interface ActionTableProps {
   leads: Lead[];
+  onLeadUpdated: () => void;
 }
 
-export const ActionTable = ({ leads }: ActionTableProps) => {
+export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [smsChangingLead, setSmsChangingLead] = useState<Lead | null>(null);
+
+  const handleSmsStatusChange = async (newStatus: SmsContactStatus, note: string) => {
+    if (!smsChangingLead) return;
+
+    const updatedLead: Lead = {
+      ...smsChangingLead,
+      smsContactStatus: newStatus,
+    };
+
+    dataRepository.updateLead(updatedLead);
+
+    dataRepository.addInteraction({
+      id: crypto.randomUUID(),
+      leadId: smsChangingLead.id,
+      message: `Estado SMS cambiado a: ${newStatus === "activo" ? "Activo" : "Bloqueado"}. ${note}`,
+      createdAt: new Date().toISOString(),
+    });
+
+    toast({
+      title: newStatus === "activo" ? "SMS Activado" : "SMS Bloqueado",
+      description: `El canal SMS del lead "${smsChangingLead.name}" ha sido ${newStatus === "activo" ? "activado" : "bloqueado"}.`,
+    });
+
+    onLeadUpdated();
+    setSmsChangingLead(null);
+  };
 
   return (
     <Card>
@@ -29,13 +62,14 @@ export const ActionTable = ({ leads }: ActionTableProps) => {
               <TableHead className="w-[100px]">Fecha</TableHead>
               <TableHead className="w-[120px]">Acción rápida</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead className="w-[100px]">SMS</TableHead>
               <TableHead className="w-[80px]">Temp.</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No hay acciones pendientes
                 </TableCell>
               </TableRow>
@@ -140,7 +174,48 @@ export const ActionTable = ({ leads }: ActionTableProps) => {
                       </Badge>
                     </TableCell>
 
-                    {/* Columna 7: Temperatura */}
+                    {/* Columna 7: SMS */}
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${
+                            lead.smsContactStatus === "activo" 
+                              ? "bg-green-500/10 text-green-600 border-green-500/30" 
+                              : "bg-destructive/10 text-destructive border-destructive/30"
+                          }`}
+                        >
+                          {lead.smsContactStatus === "activo" ? (
+                            <><MessageSquare className="h-3 w-3 mr-1" />Activo</>
+                          ) : (
+                            <><MessageSquareOff className="h-3 w-3 mr-1" />Bloq.</>
+                          )}
+                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => setSmsChangingLead(lead)}
+                              >
+                                {lead.smsContactStatus === "activo" ? (
+                                  <MessageSquareOff className="h-3 w-3 text-muted-foreground" />
+                                ) : (
+                                  <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{lead.smsContactStatus === "activo" ? "Bloquear SMS" : "Activar SMS"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableCell>
+
+                    {/* Columna 8: Temperatura */}
                     <TableCell>
                       <Badge variant="outline" className={`text-xs ${getTemperatureColor(lead.temperature)}`}>
                         {getTemperatureLabel(lead.temperature)}
@@ -153,6 +228,15 @@ export const ActionTable = ({ leads }: ActionTableProps) => {
           </TableBody>
         </Table>
       </CardContent>
+
+      {smsChangingLead && (
+        <ChangeSmsStatusModal
+          isOpen={!!smsChangingLead}
+          onClose={() => setSmsChangingLead(null)}
+          onSave={handleSmsStatusChange}
+          currentStatus={smsChangingLead.smsContactStatus}
+        />
+      )}
     </Card>
   );
 };

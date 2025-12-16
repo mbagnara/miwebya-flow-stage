@@ -613,7 +613,7 @@ const Dashboard = () => {
             Cargando acciones pendientes...
           </div>
         ) : (
-          <ActionTable leads={paginatedLeads} />
+          <ActionTable leads={paginatedLeads} onLeadUpdated={loadLeads} />
         )}
 
         {/* CAPA 4: Pipeline Overview (movido abajo) */}
