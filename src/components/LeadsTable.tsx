@@ -2,14 +2,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lead } from "@/types/crm";
+import { Lead, SmsContactStatus } from "@/types/crm";
 import { getPipelineState } from "@/lib/pipeline";
 import { getTemperatureColor, getTemperatureLabel } from "@/lib/temperature";
 import { useNavigate } from "react-router-dom";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
 import { DeleteLeadDialog } from "@/components/DeleteLeadDialog";
 import { PipelineProgress } from "@/components/PipelineProgress";
-import { MoreVertical, Pencil, Eye, GitBranch, Trash2 } from "lucide-react";
+import { ChangeSmsStatusModal } from "@/components/ChangeSmsStatusModal";
+import { MoreVertical, Pencil, Eye, GitBranch, Trash2, MessageSquare, MessageSquareOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -20,6 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { pipelineConfigRepository, PipelineConfigStage } from "@/lib/PipelineConfigRepository";
+import { dataRepository } from "@/lib/DataRepository";
+import { useToast } from "@/hooks/use-toast";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -28,10 +31,12 @@ interface LeadsTableProps {
 
 export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [pipelineConfig, setPipelineConfig] = useState<PipelineConfigStage[]>([]);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
+  const [smsChangingLead, setSmsChangingLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     const config = pipelineConfigRepository.getPipelineConfig();
@@ -78,6 +83,29 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
     }
   };
 
+  const handleSmsStatusChange = (newStatus: SmsContactStatus, note: string) => {
+    if (!smsChangingLead) return;
+    
+    const interaction = {
+      id: crypto.randomUUID(),
+      leadId: smsChangingLead.id,
+      message: `Estado SMS cambiado a: ${newStatus === "activo" ? "Activo" : "Bloqueado"}${note ? ` - ${note}` : ""}`,
+      createdAt: new Date().toISOString(),
+    };
+    dataRepository.addInteraction(interaction);
+    
+    const updatedLead = { ...smsChangingLead, smsContactStatus: newStatus };
+    dataRepository.updateLead(updatedLead);
+    
+    toast({
+      title: newStatus === "activo" ? "SMS Activado" : "SMS Bloqueado",
+      description: `El canal SMS del lead "${smsChangingLead.name}" ha sido ${newStatus === "activo" ? "activado" : "bloqueado"}.`,
+    });
+    
+    onLeadUpdated();
+    setSmsChangingLead(null);
+  };
+
   return (
     <Card>
       <CardContent className="p-0">
@@ -88,6 +116,7 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
               <TableHead>Teléfono</TableHead>
               <TableHead>Temperatura</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Estado SMS</TableHead>
               <TableHead>Próximo Paso</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -95,7 +124,7 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No hay leads aún. Crea el primero!
                 </TableCell>
               </TableRow>
@@ -120,6 +149,25 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
                         className={getStateBadgeClassName(lead.pipelineState)}
                       >
                         {state?.name || lead.pipelineState}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="outline" 
+                        className={lead.smsContactStatus === "activo" 
+                          ? "bg-green-500/10 text-green-600 border-green-500/30" 
+                          : "bg-destructive/10 text-destructive border-destructive/30"
+                        }
+                      >
+                        {lead.smsContactStatus === "activo" ? (
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" /> Activo
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <MessageSquareOff className="h-3 w-3" /> Bloqueado
+                          </span>
+                        )}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -168,6 +216,19 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
                           <DropdownMenuItem onClick={() => navigate(`/lead/${lead.id}`)}>
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Lead
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSmsChangingLead(lead)}>
+                            {lead.smsContactStatus === "activo" ? (
+                              <>
+                                <MessageSquareOff className="h-4 w-4 mr-2" />
+                                Bloquear SMS
+                              </>
+                            ) : (
+                              <>
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Activar SMS
+                              </>
+                            )}
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => setDeletingLead(lead)}
@@ -240,6 +301,16 @@ export const LeadsTable = ({ leads, onLeadUpdated }: LeadsTableProps) => {
           }}
           open={!!deletingLead}
           onOpenChange={(open) => !open && setDeletingLead(null)}
+        />
+      )}
+
+      {/* SMS Status Modal */}
+      {smsChangingLead && (
+        <ChangeSmsStatusModal
+          isOpen={!!smsChangingLead}
+          onClose={() => setSmsChangingLead(null)}
+          onSave={handleSmsStatusChange}
+          currentStatus={smsChangingLead.smsContactStatus}
         />
       )}
     </Card>
