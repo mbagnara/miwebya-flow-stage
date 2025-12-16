@@ -1,4 +1,5 @@
 export type LeadTemperature = "cold" | "cold-warm" | "warm" | "warm-hot" | "hot";
+export type SmsContactStatus = "activo" | "bloqueado";
 
 export interface Lead {
   id: string;
@@ -12,6 +13,7 @@ export interface Lead {
   temperatureManual: boolean;
   nextContactDate?: string;
   nextActionNote?: string;
+  smsContactStatus: SmsContactStatus;
 }
 
 export interface PipelineState {

@@ -6,9 +6,16 @@ export type UrgencyType = "overdue" | "today" | "upcoming" | "no-action";
 
 /**
  * Calcula la urgencia de un lead basado en su nextContactDate
+ * Nota: Leads con SMS bloqueado NO cuentan como "no-action"
  */
 export const getLeadUrgency = (lead: Lead): UrgencyType => {
-  if (!lead.nextContactDate) return "no-action";
+  // Si no tiene nextContactDate Y tiene SMS activo → no-action
+  // Si no tiene nextContactDate Y tiene SMS bloqueado → no cuenta (return "upcoming" como fallback neutro)
+  if (!lead.nextContactDate) {
+    // Leads bloqueados no cuentan como "sin acción" para evitar alertas
+    if (lead.smsContactStatus === "bloqueado") return "upcoming";
+    return "no-action";
+  }
   
   const contactDate = new Date(lead.nextContactDate);
   const today = startOfDay(new Date());
@@ -86,4 +93,11 @@ export const countLeadsByUrgency = (leads: Lead[]) => {
     },
     { overdue: 0, today: 0, upcoming: 0, "no-action": 0 }
   );
+};
+
+/**
+ * Cuenta leads con SMS bloqueado
+ */
+export const countSmsBlocked = (leads: Lead[]): number => {
+  return leads.filter(lead => lead.smsContactStatus === "bloqueado").length;
 };

@@ -72,12 +72,23 @@ export class DataRepository {
   // LEADS
   async getLeads(): Promise<Lead[]> {
     const data = localStorage.getItem(LEADS_KEY);
-    return data ? JSON.parse(data) : [];
+    const leads: Lead[] = data ? JSON.parse(data) : [];
+    // Migración: agregar smsContactStatus si no existe
+    return leads.map(lead => ({
+      ...lead,
+      smsContactStatus: lead.smsContactStatus || "activo"
+    }));
   }
 
   async getLeadById(id: string): Promise<Lead | null> {
     const leads = await this.getLeads();
-    return leads.find(lead => lead.id === id) || null;
+    const lead = leads.find(lead => lead.id === id);
+    if (!lead) return null;
+    // Migración: agregar smsContactStatus si no existe
+    return {
+      ...lead,
+      smsContactStatus: lead.smsContactStatus || "activo"
+    };
   }
 
   async saveLead(lead: Lead): Promise<void> {
@@ -184,7 +195,8 @@ export class DataRepository {
         pipelineState: "valor_entregado",
         createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         temperature: "warm",
-        temperatureManual: false
+        temperatureManual: false,
+        smsContactStatus: "activo"
       },
       {
         id: "lead-2",
@@ -195,7 +207,8 @@ export class DataRepository {
         pipelineState: "interaccion_activa",
         createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
         temperature: "warm",
-        temperatureManual: false
+        temperatureManual: false,
+        smsContactStatus: "activo"
       },
       {
         id: "lead-3",
@@ -206,7 +219,8 @@ export class DataRepository {
         pipelineState: "contacto_inicial",
         createdAt: new Date().toISOString(),
         temperature: "cold",
-        temperatureManual: false
+        temperatureManual: false,
+        smsContactStatus: "activo"
       }
     ];
 

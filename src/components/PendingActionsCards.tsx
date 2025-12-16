@@ -1,20 +1,23 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Lead } from "@/types/crm";
-import { countLeadsByUrgency, UrgencyType } from "@/lib/urgency";
-import { AlertCircle, CalendarCheck, CalendarClock, AlertTriangle } from "lucide-react";
+import { countLeadsByUrgency, countSmsBlocked, UrgencyType } from "@/lib/urgency";
+import { AlertCircle, CalendarCheck, CalendarClock, AlertTriangle, MessageSquareOff } from "lucide-react";
+
+export type FilterType = UrgencyType | "sms-blocked" | "all";
 
 interface PendingActionsCardsProps {
   leads: Lead[];
-  activeFilter: UrgencyType | "all";
-  onFilterChange: (filter: UrgencyType | "all") => void;
+  activeFilter: FilterType;
+  onFilterChange: (filter: FilterType) => void;
 }
 
 export const PendingActionsCards = ({ leads, activeFilter, onFilterChange }: PendingActionsCardsProps) => {
   const counts = countLeadsByUrgency(leads);
+  const smsBlockedCount = countSmsBlocked(leads);
 
   const cards = [
     {
-      id: "overdue" as UrgencyType,
+      id: "overdue" as FilterType,
       title: "Acciones vencidas",
       subtitle: "Requieren acción inmediata",
       count: counts.overdue,
@@ -25,7 +28,7 @@ export const PendingActionsCards = ({ leads, activeFilter, onFilterChange }: Pen
       iconColor: "text-red-500"
     },
     {
-      id: "today" as UrgencyType,
+      id: "today" as FilterType,
       title: "Acciones de hoy",
       subtitle: "Compromisos para hoy",
       count: counts.today,
@@ -36,7 +39,7 @@ export const PendingActionsCards = ({ leads, activeFilter, onFilterChange }: Pen
       iconColor: "text-orange-500"
     },
     {
-      id: "upcoming" as UrgencyType,
+      id: "upcoming" as FilterType,
       title: "Próximas acciones",
       subtitle: "Acciones planificadas",
       count: counts.upcoming,
@@ -47,7 +50,7 @@ export const PendingActionsCards = ({ leads, activeFilter, onFilterChange }: Pen
       iconColor: "text-green-500"
     },
     {
-      id: "no-action" as UrgencyType,
+      id: "no-action" as FilterType,
       title: "Sin próxima acción",
       subtitle: "Leads sin seguimiento definido",
       count: counts["no-action"],
@@ -56,6 +59,17 @@ export const PendingActionsCards = ({ leads, activeFilter, onFilterChange }: Pen
       borderColor: "border-destructive/30",
       textColor: "text-destructive",
       iconColor: "text-destructive"
+    },
+    {
+      id: "sms-blocked" as FilterType,
+      title: "SMS Bloqueados",
+      subtitle: "Canal SMS no disponible",
+      count: smsBlockedCount,
+      icon: MessageSquareOff,
+      bgColor: "bg-muted",
+      borderColor: "border-border",
+      textColor: "text-muted-foreground",
+      iconColor: "text-muted-foreground"
     }
   ];
 

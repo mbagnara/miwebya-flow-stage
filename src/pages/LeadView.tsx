@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Lead, Interaction, LeadTemperature } from "@/types/crm";
+import { Lead, Interaction, LeadTemperature, SmsContactStatus } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
 import { getPipelineState, getNextState, getPreviousState, isTerminalState, isAuxiliaryState, MAIN_PIPELINE_STATES } from "@/lib/pipeline";
 import { updateLeadTemperature } from "@/lib/temperature";
@@ -16,8 +16,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LeadTimeline } from "@/components/LeadTimeline";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { ScheduleNextContactModal } from "@/components/ScheduleNextContactModal";
+import { ChangeSmsStatusModal } from "@/components/ChangeSmsStatusModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock, Pencil } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock, Pencil, MessageSquare, MessageSquareOff } from "lucide-react";
 import { downloadLeadJSONL } from "@/lib/leadExporter";
 import { toast } from "@/hooks/use-toast";
 
@@ -33,6 +34,7 @@ const LeadView = () => {
   const [previousMainState, setPreviousMainState] = useState<string | null>(null);
   const [showNextContactModal, setShowNextContactModal] = useState(false);
   const [showEditActionModal, setShowEditActionModal] = useState(false);
+  const [showSmsStatusModal, setShowSmsStatusModal] = useState(false);
   const [pendingStateChange, setPendingStateChange] = useState<{ stateId: string; stateName: string } | null>(null);
 
   const loadLeadData = async () => {
@@ -289,6 +291,34 @@ const LeadView = () => {
     setPendingStateChange(null);
   };
 
+  const handleSmsStatusChange = async (newStatus: SmsContactStatus, note: string) => {
+    if (!lead) return;
+
+    const updatedLead: Lead = {
+      ...lead,
+      smsContactStatus: newStatus
+    };
+    await dataRepository.updateLead(updatedLead);
+
+    // Registrar en timeline
+    const statusLabel = newStatus === "bloqueado" ? "Bloqueado" : "Activo";
+    const newInteraction: Interaction = {
+      id: `int-sms-${Date.now()}`,
+      leadId: lead.id,
+      message: `Estado SMS cambiado a: ${statusLabel}\n\n${note}`,
+      createdAt: new Date().toISOString(),
+      direction: "outgoing"
+    };
+    await dataRepository.addInteraction(newInteraction);
+
+    toast({
+      title: newStatus === "bloqueado" ? "SMS Bloqueado" : "SMS Activado",
+      description: `El canal SMS ha sido ${newStatus === "bloqueado" ? "bloqueado" : "activado"} para este lead`
+    });
+
+    loadLeadData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -366,9 +396,26 @@ const LeadView = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Nombre</p>
-                  <p className="text-lg font-semibold">{lead.name}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nombre</p>
+                    <p className="text-lg font-semibold">{lead.name}</p>
+                  </div>
+                  <Badge 
+                    variant={lead.smsContactStatus === "activo" ? "default" : "destructive"}
+                    className={`flex items-center gap-1 ${
+                      lead.smsContactStatus === "activo" 
+                        ? "bg-green-500/10 text-green-600 border-green-500/30" 
+                        : "bg-destructive/10 text-destructive border-destructive/30"
+                    }`}
+                  >
+                    {lead.smsContactStatus === "activo" ? (
+                      <MessageSquare className="h-3 w-3" />
+                    ) : (
+                      <MessageSquareOff className="h-3 w-3" />
+                    )}
+                    {lead.smsContactStatus === "activo" ? "SMS Activo" : "SMS Bloqueado"}
+                  </Badge>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
@@ -406,6 +453,41 @@ const LeadView = () => {
                       <SelectItem value="hot">Hot</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                {/* Estado SMS - Control de compliance */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {lead.smsContactStatus === "activo" ? (
+                        <MessageSquare className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <MessageSquareOff className="h-4 w-4 text-destructive" />
+                      )}
+                      <span className="text-sm font-medium">Estado SMS (Compliance)</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`w-full gap-2 ${
+                      lead.smsContactStatus === "activo"
+                        ? "border-destructive/50 text-destructive hover:bg-destructive/10"
+                        : "border-green-500/50 text-green-600 hover:bg-green-500/10"
+                    }`}
+                    onClick={() => setShowSmsStatusModal(true)}
+                  >
+                    {lead.smsContactStatus === "activo" ? (
+                      <>
+                        <MessageSquareOff className="h-4 w-4" />
+                        Bloquear SMS
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="h-4 w-4" />
+                        Activar SMS
+                      </>
+                    )}
+                  </Button>
                 </div>
                 {/* Próxima acción - con indicador de urgencia */}
                 <div className="pt-4 border-t">
@@ -604,44 +686,78 @@ const LeadView = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className={lead.smsContactStatus === "bloqueado" ? "opacity-60" : ""}>
               <CardHeader>
-                <CardTitle>Registrar interacción</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  Registrar interacción
+                  {lead.smsContactStatus === "bloqueado" && (
+                    <Badge variant="destructive" className="text-xs">
+                      <MessageSquareOff className="h-3 w-3 mr-1" />
+                      SMS Bloqueado
+                    </Badge>
+                  )}
+                </CardTitle>
                 <CardDescription>
-                  Escribe aquí la respuesta del lead o una nota rápida
+                  {lead.smsContactStatus === "bloqueado" 
+                    ? "Este lead tiene el canal SMS bloqueado por compliance"
+                    : "Escribe aquí la respuesta del lead o una nota rápida"
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <Label>¿Quién envía el mensaje?</Label>
-                  <RadioGroup
-                    value={interactionSource}
-                    onValueChange={(value) => setInteractionSource(value as "lead" | "yo")}
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="lead" id="lead" />
-                      <Label htmlFor="lead" className="cursor-pointer font-normal">Lead</Label>
+                {lead.smsContactStatus === "bloqueado" ? (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-center">
+                    <MessageSquareOff className="h-8 w-8 text-destructive mx-auto mb-2" />
+                    <p className="text-sm text-destructive font-medium">
+                      Canal SMS bloqueado por compliance
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      No se pueden registrar nuevas interacciones SMS con este lead.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 gap-1"
+                      onClick={() => setShowSmsStatusModal(true)}
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      Reactivar SMS
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>¿Quién envía el mensaje?</Label>
+                      <RadioGroup
+                        value={interactionSource}
+                        onValueChange={(value) => setInteractionSource(value as "lead" | "yo")}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="lead" id="lead" />
+                          <Label htmlFor="lead" className="cursor-pointer font-normal">Lead</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yo" id="yo" />
+                          <Label htmlFor="yo" className="cursor-pointer font-normal">Yo</Label>
+                        </div>
+                      </RadioGroup>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yo" id="yo" />
-                      <Label htmlFor="yo" className="cursor-pointer font-normal">Yo</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                <Textarea
-                  value={incomingMessage}
-                  onChange={(e) => setIncomingMessage(e.target.value)}
-                  placeholder="Escribe aquí la respuesta del lead o una nota rápida..."
-                  className="min-h-[80px] resize-none"
-                />
-                <Button
-                  onClick={handleSaveIncomingMessage}
-                  className="w-full"
-                  disabled={!incomingMessage.trim()}
-                >
-                  Guardar interacción
-                </Button>
+                    <Textarea
+                      value={incomingMessage}
+                      onChange={(e) => setIncomingMessage(e.target.value)}
+                      placeholder="Escribe aquí la respuesta del lead o una nota rápida..."
+                      className="min-h-[80px] resize-none"
+                    />
+                    <Button
+                      onClick={handleSaveIncomingMessage}
+                      className="w-full"
+                      disabled={!incomingMessage.trim()}
+                    >
+                      Guardar interacción
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -685,6 +801,14 @@ const LeadView = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal para cambiar estado SMS */}
+      <ChangeSmsStatusModal
+        isOpen={showSmsStatusModal}
+        onClose={() => setShowSmsStatusModal(false)}
+        onSave={handleSmsStatusChange}
+        currentStatus={lead.smsContactStatus || "activo"}
+      />
     </div>
   );
 };

@@ -212,7 +212,8 @@ export function ImportCSVDialog({ onImportComplete, trigger }: ImportCSVDialogPr
           pipelineState: "nuevo",
           createdAt: new Date().toISOString(),
           temperature: "cold",
-          temperatureManual: false
+          temperatureManual: false,
+          smsContactStatus: "activo"
         };
 
         try {

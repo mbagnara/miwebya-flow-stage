@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle, Search, X, Phone } from "lucide-react";
+import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle, Search, X, Phone, MessageSquareOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import { format, startOfDay, endOfDay, isWithinInterval, isSameDay } from "date-
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getLeadUrgency, UrgencyType } from "@/lib/urgency";
+import { FilterType } from "@/components/PendingActionsCards";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +41,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [temperatureFilter, setTemperatureFilter] = useState<LeadTemperature | "all">("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
-  const [actionFilter, setActionFilter] = useState<UrgencyType | "all">("all");
+  const [actionFilter, setActionFilter] = useState<FilterType>("all");
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -68,9 +69,13 @@ const Dashboard = () => {
     loadLeads();
   }, []);
 
-  // Filtrar por urgencia de acción primero
+  // Filtrar por urgencia de acción primero (incluye sms-blocked)
   const actionFilteredLeads = useMemo(() => {
     if (actionFilter === "all") return leads;
+    
+    if (actionFilter === "sms-blocked") {
+      return leads.filter(lead => lead.smsContactStatus === "bloqueado");
+    }
     
     return leads.filter(lead => {
       const urgency = getLeadUrgency(lead);
@@ -410,6 +415,15 @@ const Dashboard = () => {
             >
               <AlertTriangle className="h-3 w-3" />
               Sin próxima acción
+            </Button>
+            <Button
+              variant={actionFilter === "sms-blocked" ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setActionFilter(actionFilter === "sms-blocked" ? "all" : "sms-blocked")}
+              className="gap-1"
+            >
+              <MessageSquareOff className="h-3 w-3" />
+              SMS Bloqueados
             </Button>
           </div>
 

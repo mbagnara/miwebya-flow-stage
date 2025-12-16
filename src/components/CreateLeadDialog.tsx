@@ -110,7 +110,8 @@ export const CreateLeadDialog = ({
         pipelineState: "nuevo",
         createdAt: new Date().toISOString(),
         temperature: "cold",
-        temperatureManual: false
+        temperatureManual: false,
+        smsContactStatus: "activo"
       };
 
       await dataRepository.saveLead(newLead);
