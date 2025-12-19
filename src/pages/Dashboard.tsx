@@ -363,7 +363,8 @@ const Dashboard = () => {
         {/* CAPA 1: Bloque Acciones Pendientes */}
         {!loading && leads.length > 0 && (
           <PendingActionsCards 
-            leads={leads}
+            leads={blockedFilteredLeads}
+            allLeads={leads}
             activeFilter={actionFilter}
             onFilterChange={setActionFilter}
           />

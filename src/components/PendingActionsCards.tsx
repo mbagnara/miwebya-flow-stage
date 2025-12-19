@@ -7,13 +7,15 @@ export type FilterType = UrgencyType | "sms-blocked" | "all";
 
 interface PendingActionsCardsProps {
   leads: Lead[];
+  allLeads?: Lead[];  // Para contador de SMS bloqueados (siempre muestra total real)
   activeFilter: FilterType;
   onFilterChange: (filter: FilterType) => void;
 }
 
-export const PendingActionsCards = ({ leads, activeFilter, onFilterChange }: PendingActionsCardsProps) => {
+export const PendingActionsCards = ({ leads, allLeads, activeFilter, onFilterChange }: PendingActionsCardsProps) => {
   const counts = countLeadsByUrgency(leads);
-  const smsBlockedCount = countSmsBlocked(leads);
+  // El contador de SMS bloqueados siempre usa allLeads para mostrar el total real
+  const smsBlockedCount = countSmsBlocked(allLeads || leads);
 
   const cards = [
     {
