@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Lead, LeadTemperature } from "@/types/crm";
 import { dataRepository } from "@/lib/DataRepository";
 import { MAIN_PIPELINE_STATES, PIPELINE_STATES } from "@/lib/pipeline";
@@ -54,6 +56,9 @@ const Dashboard = () => {
   
   // Estado del filtro por teléfono (prioridad máxima)
   const [phoneSearch, setPhoneSearch] = useState("");
+  
+  // Estado para excluir leads bloqueados (por defecto activado)
+  const [excludeBlockedLeads, setExcludeBlockedLeads] = useState(true);
 
   const loadLeads = async () => {
     setLoading(true);
@@ -69,19 +74,31 @@ const Dashboard = () => {
     loadLeads();
   }, []);
 
-  // Filtrar por urgencia de acción primero (incluye sms-blocked)
+  // Primero aplicar filtro de leads bloqueados (excepto cuando el filtro es sms-blocked)
+  const blockedFilteredLeads = useMemo(() => {
+    // Si el filtro activo es "sms-blocked", no excluir bloqueados
+    if (actionFilter === "sms-blocked") return leads;
+    
+    // Si el checkbox está activo, excluir bloqueados
+    if (excludeBlockedLeads) {
+      return leads.filter(lead => lead.smsContactStatus !== "bloqueado");
+    }
+    return leads;
+  }, [leads, excludeBlockedLeads, actionFilter]);
+
+  // Filtrar por urgencia de acción
   const actionFilteredLeads = useMemo(() => {
-    if (actionFilter === "all") return leads;
+    if (actionFilter === "all") return blockedFilteredLeads;
     
     if (actionFilter === "sms-blocked") {
       return leads.filter(lead => lead.smsContactStatus === "bloqueado");
     }
     
-    return leads.filter(lead => {
+    return blockedFilteredLeads.filter(lead => {
       const urgency = getLeadUrgency(lead);
       return urgency === actionFilter;
     });
-  }, [leads, actionFilter]);
+  }, [blockedFilteredLeads, leads, actionFilter]);
 
   // Filtrar por fecha
   const dateFilteredLeads = useMemo(() => {
@@ -419,12 +436,37 @@ const Dashboard = () => {
             <Button
               variant={actionFilter === "sms-blocked" ? "secondary" : "outline"}
               size="sm"
-              onClick={() => setActionFilter(actionFilter === "sms-blocked" ? "all" : "sms-blocked")}
+              onClick={() => {
+                if (actionFilter === "sms-blocked") {
+                  setActionFilter("all");
+                } else {
+                  setActionFilter("sms-blocked");
+                }
+              }}
               className="gap-1"
             >
               <MessageSquareOff className="h-3 w-3" />
               SMS Bloqueados
             </Button>
+            
+            {/* Checkbox para excluir leads bloqueados */}
+            <div className="flex items-center space-x-2 ml-4 border-l pl-4">
+              <Checkbox 
+                id="exclude-blocked" 
+                checked={excludeBlockedLeads}
+                onCheckedChange={(checked) => setExcludeBlockedLeads(checked === true)}
+                disabled={actionFilter === "sms-blocked"}
+              />
+              <Label 
+                htmlFor="exclude-blocked" 
+                className={cn(
+                  "text-sm font-medium cursor-pointer",
+                  actionFilter === "sms-blocked" && "text-muted-foreground/50"
+                )}
+              >
+                No incluir Leads bloqueados
+              </Label>
+            </div>
           </div>
 
           {/* Filtros secundarios */}
