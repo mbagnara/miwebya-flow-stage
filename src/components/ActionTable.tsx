@@ -8,9 +8,18 @@ import { getPipelineState } from "@/lib/pipeline";
 import { getTemperatureColor, getTemperatureLabel } from "@/lib/temperature";
 import { getLeadUrgency, getUrgencyConfig, formatShortDate } from "@/lib/urgency";
 import { useNavigate } from "react-router-dom";
-import { Pencil, CheckCircle, AlertTriangle, MessageSquare, MessageSquareOff } from "lucide-react";
+import { Pencil, CheckCircle, AlertTriangle, MessageSquare, MessageSquareOff, UserPen, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChangeSmsStatusModal } from "@/components/ChangeSmsStatusModal";
+import { CreateLeadDialog } from "@/components/CreateLeadDialog";
+import { DeleteLeadDialog } from "@/components/DeleteLeadDialog";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { dataRepository } from "@/lib/DataRepository";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +32,8 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [smsChangingLead, setSmsChangingLead] = useState<Lead | null>(null);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
 
   const handleSmsStatusChange = async (newStatus: SmsContactStatus, note: string) => {
     if (!smsChangingLead) return;
@@ -130,23 +141,40 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
                     {/* Columna 5: Acción rápida */}
                     <TableCell>
                       <div className="flex gap-1">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={() => navigate(`/lead/${lead.id}`)}
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Registrar interacción</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <DropdownMenu>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Editar / Eliminar lead</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <DropdownMenuContent align="start" className="bg-popover">
+                            <DropdownMenuItem onClick={() => setEditingLead(lead)}>
+                              <UserPen className="h-4 w-4 mr-2" />
+                              Editar datos del lead
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeletingLead(lead)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Eliminar lead
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -160,7 +188,7 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Completar acción</p>
+                              <p>Ver lead / Completar acción</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -235,6 +263,30 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
           onClose={() => setSmsChangingLead(null)}
           onSave={handleSmsStatusChange}
           currentStatus={smsChangingLead.smsContactStatus}
+        />
+      )}
+
+      {editingLead && (
+        <CreateLeadDialog
+          lead={editingLead}
+          open={!!editingLead}
+          onOpenChange={(open) => !open && setEditingLead(null)}
+          onLeadCreated={() => {
+            setEditingLead(null);
+            onLeadUpdated();
+          }}
+        />
+      )}
+
+      {deletingLead && (
+        <DeleteLeadDialog
+          lead={deletingLead}
+          open={!!deletingLead}
+          onOpenChange={(open) => !open && setDeletingLead(null)}
+          onLeadDeleted={() => {
+            setDeletingLead(null);
+            onLeadUpdated();
+          }}
         />
       )}
     </Card>
