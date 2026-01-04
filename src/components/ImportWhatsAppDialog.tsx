@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { OptionCombobox } from "@/components/OptionCombobox";
 import { dataRepository } from "@/lib/DataRepository";
 import { optionsRepository } from "@/lib/OptionsRepository";
@@ -19,10 +19,7 @@ import {
   MessageSquareText, 
   CalendarIcon, 
   Plus, 
-  Trash2, 
-  Image as ImageIcon,
-  ClipboardPaste,
-  X
+  Trash2
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -42,9 +39,6 @@ const MAX_NOTE_LENGTH = 140;
 
 export const ImportWhatsAppDialog = ({ onLeadCreated }: ImportWhatsAppDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Lead data
   const [name, setName] = useState("");
@@ -79,7 +73,6 @@ export const ImportWhatsAppDialog = ({ onLeadCreated }: ImportWhatsAppDialogProp
 
   // Reset form on close
   const resetForm = () => {
-    setImagePreview(null);
     setName("");
     setPhone("");
     setCity("");
@@ -94,54 +87,17 @@ export const ImportWhatsAppDialog = ({ onLeadCreated }: ImportWhatsAppDialogProp
     setOpen(false);
   };
 
-  // Image handling
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => setImagePreview(event.target?.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => setImagePreview(event.target?.result as string);
-          reader.readAsDataURL(file);
-        }
-        break;
-      }
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => setImagePreview(event.target?.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
   // Message handling
   const addMessage = () => {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
     const newMessage: MessageEntry = {
       id: `msg-${Date.now()}`,
       content: "",
-      direction: "outgoing",
-      date: undefined,
-      time: ""
+      direction: "incoming",
+      date: now,
+      time: currentTime
     };
     setMessages([...messages, newMessage]);
   };
@@ -267,275 +223,216 @@ export const ImportWhatsAppDialog = ({ onLeadCreated }: ImportWhatsAppDialogProp
           <span className="hidden sm:inline">Importar WhatsApp</span>
         </Button>
       </DialogTrigger>
-      <DialogContent 
-        className="max-w-4xl max-h-[90vh] overflow-hidden"
-        onPaste={handlePaste}
-      >
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Importar Lead desde WhatsApp</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-          {/* Left Panel: Image */}
-          <div className="space-y-4">
-            <Label>Screenshot de referencia</Label>
-            <div
-              ref={containerRef}
-              onClick={() => fileInputRef.current?.click()}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              className={cn(
-                "border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                "hover:border-primary hover:bg-primary/5",
-                "flex items-center justify-center min-h-[300px]",
-                imagePreview ? "p-2" : "p-8"
-              )}
-            >
-              {imagePreview ? (
-                <div className="relative w-full">
-                  <ScrollArea className="h-[400px]">
-                    <img 
-                      src={imagePreview} 
-                      alt="Screenshot" 
-                      className="w-full rounded"
-                    />
-                  </ScrollArea>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setImagePreview(null);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+        <ScrollArea className="h-[500px] pr-4">
+          <div className="space-y-6">
+            {/* Lead Data */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Datos del Lead
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="name">Nombre *</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Nombre del lead"
+                  />
                 </div>
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">Click para subir imagen</p>
-                  <p className="text-sm mt-1">o arrastra y suelta</p>
-                  <div className="flex items-center justify-center gap-2 mt-4 text-xs">
-                    <ClipboardPaste className="h-4 w-4" />
-                    <span>También puedes pegar con Ctrl+V</span>
-                  </div>
+                <div>
+                  <Label htmlFor="phone">Teléfono *</Label>
+                  <Input
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+54 9 11 1234-5678"
+                  />
                 </div>
-              )}
+                <div>
+                  <Label>Ciudad</Label>
+                  <OptionCombobox
+                    options={cities}
+                    value={city}
+                    onValueChange={setCity}
+                    placeholder="Seleccionar ciudad"
+                    emptyText="Agregar nueva ciudad"
+                  />
+                </div>
+                <div>
+                  <Label>Rubro</Label>
+                  <OptionCombobox
+                    options={businessTypes}
+                    value={businessType}
+                    onValueChange={setBusinessType}
+                    placeholder="Seleccionar rubro"
+                    emptyText="Agregar nuevo rubro"
+                  />
+                </div>
+              </div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-          </div>
 
-          {/* Right Panel: Form */}
-          <ScrollArea className="h-[500px] pr-4">
-            <div className="space-y-6">
-              {/* Lead Data */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                  Datos del Lead
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="name">Nombre *</Label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Nombre del lead"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Teléfono *</Label>
-                    <Input
-                      id="phone"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+54 9 11 1234-5678"
-                    />
-                  </div>
-                  <div>
-                    <Label>Ciudad</Label>
-                    <OptionCombobox
-                      options={cities}
-                      value={city}
-                      onValueChange={setCity}
-                      placeholder="Seleccionar ciudad"
-                      emptyText="Agregar nueva ciudad"
-                    />
-                  </div>
-                  <div>
-                    <Label>Rubro</Label>
-                    <OptionCombobox
-                      options={businessTypes}
-                      value={businessType}
-                      onValueChange={setBusinessType}
-                      placeholder="Seleccionar rubro"
-                      emptyText="Agregar nuevo rubro"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Next Contact (Optional) */}
-              <div className="space-y-4 border-t pt-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                  Próximo Contacto (opcional)
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="nextAction">Próxima acción</Label>
-                    <Input
-                      id="nextAction"
-                      value={nextActionNote}
-                      onChange={(e) => setNextActionNote(e.target.value.slice(0, MAX_NOTE_LENGTH))}
-                      placeholder="Ej: Llamar para hacer seguimiento"
-                      maxLength={MAX_NOTE_LENGTH}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {nextActionNote.length}/{MAX_NOTE_LENGTH}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Fecha próximo contacto</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !nextContactDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {nextContactDate 
-                            ? format(nextContactDate, "dd/MM/yyyy", { locale: es }) 
-                            : "Seleccionar fecha"
-                          }
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={nextContactDate}
-                          onSelect={setNextContactDate}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              </div>
-
-              {/* Messages */}
-              <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                    Mensajes de la conversación
-                  </h3>
-                  <Button variant="outline" size="sm" onClick={addMessage}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Agregar
-                  </Button>
-                </div>
-
-                {messages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No hay mensajes. Click en "Agregar" para añadir mensajes.
+            {/* Next Contact (Optional) */}
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Próximo Contacto (opcional)
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="nextAction">Próxima acción</Label>
+                  <Input
+                    id="nextAction"
+                    value={nextActionNote}
+                    onChange={(e) => setNextActionNote(e.target.value.slice(0, MAX_NOTE_LENGTH))}
+                    placeholder="Ej: Llamar para hacer seguimiento"
+                    maxLength={MAX_NOTE_LENGTH}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {nextActionNote.length}/{MAX_NOTE_LENGTH}
                   </p>
-                ) : (
-                  <div className="space-y-4">
-                    {messages.map((msg, index) => (
-                      <div key={msg.id} className="border rounded-lg p-3 space-y-3 bg-muted/30">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Mensaje {index + 1}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => removeMessage(msg.id)}
+                </div>
+                <div>
+                  <Label>Fecha próximo contacto</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !nextContactDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {nextContactDate 
+                          ? format(nextContactDate, "dd/MM/yyyy", { locale: es }) 
+                          : "Seleccionar fecha"
+                        }
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={nextContactDate}
+                        onSelect={setNextContactDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                  Mensajes de la conversación
+                </h3>
+                <Button variant="outline" size="sm" onClick={addMessage}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Agregar
+                </Button>
+              </div>
+
+              {messages.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No hay mensajes. Click en "Agregar" para añadir mensajes.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((msg, index) => (
+                    <div key={msg.id} className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Mensaje {index + 1}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => removeMessage(msg.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <Textarea
+                        value={msg.content}
+                        onChange={(e) => updateMessage(msg.id, { content: e.target.value })}
+                        placeholder="Texto del mensaje..."
+                        className="min-h-[60px]"
+                      />
+
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <Label className="text-xs">Dirección</Label>
+                          <RadioGroup
+                            value={msg.direction === "incoming" ? "lead" : "yo"}
+                            onValueChange={(value) => updateMessage(msg.id, { 
+                              direction: value === "lead" ? "incoming" : "outgoing" 
+                            })}
+                            className="flex gap-4 mt-1"
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="lead" id={`lead-${msg.id}`} />
+                              <Label htmlFor={`lead-${msg.id}`} className="cursor-pointer font-normal">Lead</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="yo" id={`yo-${msg.id}`} />
+                              <Label htmlFor={`yo-${msg.id}`} className="cursor-pointer font-normal">Yo</Label>
+                            </div>
+                          </RadioGroup>
                         </div>
-
-                        <Textarea
-                          value={msg.content}
-                          onChange={(e) => updateMessage(msg.id, { content: e.target.value })}
-                          placeholder="Texto del mensaje..."
-                          className="min-h-[60px]"
-                        />
-
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <Label className="text-xs">Dirección</Label>
-                            <Select
-                              value={msg.direction}
-                              onValueChange={(val) => updateMessage(msg.id, { direction: val as "incoming" | "outgoing" })}
-                            >
-                              <SelectTrigger className="h-9">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="outgoing">Enviado</SelectItem>
-                                <SelectItem value="incoming">Recibido</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Fecha</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full h-9 justify-start text-left font-normal text-xs",
-                                    !msg.date && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-1 h-3 w-3" />
-                                  {msg.date 
-                                    ? format(msg.date, "dd/MM/yy", { locale: es }) 
-                                    : "Fecha"
-                                  }
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={msg.date}
-                                  onSelect={(date) => updateMessage(msg.id, { date })}
-                                  initialFocus
-                                  className="p-3 pointer-events-auto"
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Hora</Label>
-                            <Input
-                              type="time"
-                              value={msg.time}
-                              onChange={(e) => updateMessage(msg.id, { time: e.target.value })}
-                              className="h-9 text-xs"
-                            />
-                          </div>
+                        <div>
+                          <Label className="text-xs">Fecha</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full h-9 justify-start text-left font-normal text-xs",
+                                  !msg.date && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-1 h-3 w-3" />
+                                {msg.date 
+                                  ? format(msg.date, "dd/MM/yy", { locale: es }) 
+                                  : "Fecha"
+                                }
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={msg.date}
+                                onSelect={(date) => updateMessage(msg.id, { date })}
+                                initialFocus
+                                className="p-3 pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Hora</Label>
+                          <Input
+                            type="time"
+                            value={msg.time}
+                            onChange={(e) => updateMessage(msg.id, { time: e.target.value })}
+                            className="h-9 text-xs w-24"
+                          />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </ScrollArea>
-        </div>
+          </div>
+        </ScrollArea>
 
         {/* Footer */}
         <div className="flex justify-end gap-2 pt-4 border-t">
