@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lead, SmsContactStatus } from "@/types/crm";
+import { Lead, SmsContactStatus, Interaction } from "@/types/crm";
 import { getPipelineState } from "@/lib/pipeline";
 import { getTemperatureColor, getTemperatureLabel } from "@/lib/temperature";
 import { getLeadUrgency, getUrgencyConfig, formatShortDate } from "@/lib/urgency";
+import { getElapsedTime, isOverThreshold } from "@/lib/timeUtils";
 import { useNavigate } from "react-router-dom";
-import { Pencil, CheckCircle, AlertTriangle, MessageSquare, MessageSquareOff, UserPen, Trash2 } from "lucide-react";
+import { Pencil, CheckCircle, AlertTriangle, MessageSquare, MessageSquareOff, UserPen, Trash2, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChangeSmsStatusModal } from "@/components/ChangeSmsStatusModal";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { dataRepository } from "@/lib/DataRepository";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ActionTableProps {
   leads: Lead[];
@@ -34,6 +36,18 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
   const [smsChangingLead, setSmsChangingLead] = useState<Lead | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
+  const [lastInteractions, setLastInteractions] = useState<Map<string, Interaction>>(new Map());
+
+  useEffect(() => {
+    const loadLastInteractions = async () => {
+      const leadIds = leads.map(l => l.id);
+      if (leadIds.length > 0) {
+        const interactions = await dataRepository.getLastInteractionsForLeads(leadIds);
+        setLastInteractions(interactions);
+      }
+    };
+    loadLastInteractions();
+  }, [leads]);
 
   const handleSmsStatusChange = async (newStatus: SmsContactStatus, note: string) => {
     if (!smsChangingLead) return;
@@ -69,6 +83,7 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
             <TableRow>
               <TableHead className="w-[60px]">Urgencia</TableHead>
               <TableHead>Lead</TableHead>
+              <TableHead className="w-[80px]">Tiempo</TableHead>
               <TableHead>Acción comprometida</TableHead>
               <TableHead className="w-[100px]">Fecha</TableHead>
               <TableHead className="w-[120px]">Acción rápida</TableHead>
@@ -80,7 +95,7 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   No hay acciones pendientes
                 </TableCell>
               </TableRow>
@@ -117,7 +132,44 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
                       </button>
                     </TableCell>
 
-                    {/* Columna 3: Próxima acción */}
+                    {/* Columna 3: Tiempo transcurrido desde última interacción */}
+                    <TableCell>
+                      {(() => {
+                        const lastInteraction = lastInteractions.get(lead.id);
+                        if (!lastInteraction) {
+                          return <span className="text-xs text-muted-foreground">—</span>;
+                        }
+                        
+                        const elapsed = getElapsedTime(lastInteraction.createdAt);
+                        const over24h = isOverThreshold(lastInteraction.createdAt, 24);
+                        const over48h = isOverThreshold(lastInteraction.createdAt, 48);
+                        
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <div className={cn(
+                                  "flex items-center gap-1 text-xs font-mono",
+                                  over48h ? "text-red-600" : 
+                                  over24h ? "text-orange-500" : 
+                                  "text-muted-foreground"
+                                )}>
+                                  <Clock className="h-3 w-3" />
+                                  {elapsed}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Tiempo desde última interacción</p>
+                                {over48h && <p className="text-red-400">⚠️ Más de 48 horas sin contacto</p>}
+                                {over24h && !over48h && <p className="text-orange-400">⏰ Más de 24 horas sin contacto</p>}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
+                    </TableCell>
+
+                    {/* Columna 4: Próxima acción */}
                     <TableCell>
                       {lead.nextActionNote ? (
                         <p className="text-sm text-foreground truncate max-w-[200px]" title={lead.nextActionNote}>
