@@ -152,6 +152,30 @@ export class DataRepository {
     return data ? JSON.parse(data) : [];
   }
 
+  /**
+   * Obtiene la última interacción de múltiples leads de forma eficiente
+   * @param leadIds - Array de IDs de leads
+   * @returns Map con leadId -> última interacción
+   */
+  async getLastInteractionsForLeads(leadIds: string[]): Promise<Map<string, Interaction>> {
+    const data = localStorage.getItem(INTERACTIONS_KEY);
+    const allInteractions: Interaction[] = data ? JSON.parse(data) : [];
+    
+    const result = new Map<string, Interaction>();
+    
+    for (const leadId of leadIds) {
+      const leadInteractions = allInteractions
+        .filter(i => i.leadId === leadId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      if (leadInteractions.length > 0) {
+        result.set(leadId, leadInteractions[0]);
+      }
+    }
+    
+    return result;
+  }
+
   // EXPORT / IMPORT
   async exportAllData(): Promise<{ leads: Lead[]; interactions: Interaction[]; exportDate: string }> {
     const leads = await this.getLeads();
