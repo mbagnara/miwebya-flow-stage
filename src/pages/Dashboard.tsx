@@ -6,7 +6,6 @@ import { dataRepository } from "@/lib/DataRepository";
 import { MAIN_PIPELINE_STATES, PIPELINE_STATES } from "@/lib/pipeline";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
 import { ImportCSVDialog } from "@/components/ImportCSVDialog";
-import { ImportWhatsAppDialog } from "@/components/ImportWhatsAppDialog";
 import { ActionTable } from "@/components/ActionTable";
 import { PendingActionsCards } from "@/components/PendingActionsCards";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -357,7 +356,6 @@ const Dashboard = () => {
             <Button variant="outline" size="icon" onClick={() => navigate("/settings")}>
               <Settings className="h-4 w-4" />
             </Button>
-            <ImportWhatsAppDialog onLeadCreated={loadLeads} />
             <CreateLeadDialog onLeadCreated={loadLeads} />
           </div>
         </div>
