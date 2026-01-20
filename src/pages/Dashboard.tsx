@@ -6,6 +6,7 @@ import { dataRepository } from "@/lib/DataRepository";
 import { MAIN_PIPELINE_STATES, PIPELINE_STATES } from "@/lib/pipeline";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
 import { ImportCSVDialog } from "@/components/ImportCSVDialog";
+import { ImportWhatsAppChatDialog } from "@/components/ImportWhatsAppChatDialog";
 import { ActionTable } from "@/components/ActionTable";
 import { PendingActionsCards } from "@/components/PendingActionsCards";
 import { PipelineProgress } from "@/components/PipelineProgress";
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle, Search, X, Phone, MessageSquareOff } from "lucide-react";
+import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle, Search, X, Phone, MessageSquareOff, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -304,6 +305,15 @@ const Dashboard = () => {
                 </Button>
               }
             />
+            <ImportWhatsAppChatDialog 
+              onImportComplete={loadLeads}
+              trigger={
+                <Button variant="outline" className="hidden sm:flex">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Importar Chat WA
+                </Button>
+              }
+            />
             <input
               id="import-file-input"
               type="file"
@@ -334,6 +344,14 @@ const Dashboard = () => {
               trigger={
                 <Button variant="outline" size="icon" className="sm:hidden" title="Importar New Leads">
                   <FileUp className="h-4 w-4" />
+                </Button>
+              }
+            />
+            <ImportWhatsAppChatDialog 
+              onImportComplete={loadLeads}
+              trigger={
+                <Button variant="outline" size="icon" className="sm:hidden" title="Importar Chat WhatsApp">
+                  <MessageSquare className="h-4 w-4" />
                 </Button>
               }
             />
