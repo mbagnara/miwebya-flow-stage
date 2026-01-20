@@ -16,7 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle, Search, X, Phone, MessageSquareOff, MessageSquare } from "lucide-react";
+import { Settings, GitBranch, Download, Upload, MessageSquarePlus, CalendarIcon, FileUp, Flame, CalendarCheck, AlertTriangle, Search, X, Phone, MessageSquareOff, MessageSquare, MoreHorizontal, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -256,64 +263,62 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
-        {/* Header con botones - SIN CAMBIOS */}
-        <div className="flex justify-between items-center mb-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">MiWebYa CRM</h1>
             <p className="text-muted-foreground mt-1">Tu día de ventas</p>
           </div>
-          <div className="flex gap-2">
+          
+          {/* Actions - Desktop */}
+          <div className="hidden lg:flex items-center gap-2">
             <Button 
               variant="default" 
               onClick={() => navigate("/bulk-first-message")}
-              className="hidden sm:flex"
             >
               <MessageSquarePlus className="h-4 w-4 mr-2" />
-              Agregar Primer Mensaje
+              Primer Mensaje
             </Button>
-            <Button 
-              variant="default" 
-              size="icon"
-              onClick={() => navigate("/bulk-first-message")}
-              className="sm:hidden"
-              title="Agregar Primer Mensaje"
-            >
-              <MessageSquarePlus className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleExportLeads}
-              className="hidden sm:flex"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => document.getElementById('import-file-input')?.click()}
-              className="hidden sm:flex"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Importar
-            </Button>
-            <ImportCSVDialog 
-              onImportComplete={loadLeads}
-              trigger={
-                <Button variant="outline" className="hidden sm:flex">
-                  <FileUp className="h-4 w-4 mr-2" />
-                  Importar New Leads
+            
+            {/* Import/Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar / Exportar
                 </Button>
-              }
-            />
-            <ImportWhatsAppChatDialog 
-              onImportComplete={loadLeads}
-              trigger={
-                <Button variant="outline" className="hidden sm:flex">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Importar Chat WA
-                </Button>
-              }
-            />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleExportLeads}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => document.getElementById('import-file-input')?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar JSON
+                </DropdownMenuItem>
+                <ImportCSVDialog 
+                  onImportComplete={loadLeads}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <FileUp className="h-4 w-4 mr-2" />
+                      Importar CSV (New Leads)
+                    </DropdownMenuItem>
+                  }
+                />
+                <ImportWhatsAppChatDialog 
+                  onImportComplete={loadLeads}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Importar Chat WhatsApp
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <input
               id="import-file-input"
               type="file"
@@ -321,59 +326,160 @@ const Dashboard = () => {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <Button
-              variant="outline" 
-              size="icon"
-              onClick={handleExportLeads}
-              className="sm:hidden"
-              title="Exportar leads"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => document.getElementById('import-file-input')?.click()}
-              className="sm:hidden"
-              title="Importar leads"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-            <ImportCSVDialog 
-              onImportComplete={loadLeads}
-              trigger={
-                <Button variant="outline" size="icon" className="sm:hidden" title="Importar New Leads">
-                  <FileUp className="h-4 w-4" />
-                </Button>
-              }
-            />
-            <ImportWhatsAppChatDialog 
-              onImportComplete={loadLeads}
-              trigger={
-                <Button variant="outline" size="icon" className="sm:hidden" title="Importar Chat WhatsApp">
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-              }
-            />
+            
             <Button
               variant="outline" 
               onClick={() => navigate("/config/pipeline")}
-              className="hidden sm:flex"
             >
               <GitBranch className="h-4 w-4 mr-2" />
-              Ver Configuración del Pipeline
+              Pipeline
             </Button>
+            
+            <Button variant="outline" size="icon" onClick={() => navigate("/settings")}>
+              <Settings className="h-4 w-4" />
+            </Button>
+            
+            <CreateLeadDialog onLeadCreated={loadLeads} />
+          </div>
+          
+          {/* Actions - Tablet (md-lg) */}
+          <div className="hidden sm:flex lg:hidden items-center gap-2">
+            <Button 
+              variant="default" 
+              size="icon"
+              onClick={() => navigate("/bulk-first-message")}
+              title="Agregar Primer Mensaje"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" title="Importar / Exportar">
+                  <Upload className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleExportLeads}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => document.getElementById('import-file-input-tablet')?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar JSON
+                </DropdownMenuItem>
+                <ImportCSVDialog 
+                  onImportComplete={loadLeads}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <FileUp className="h-4 w-4 mr-2" />
+                      Importar CSV (New Leads)
+                    </DropdownMenuItem>
+                  }
+                />
+                <ImportWhatsAppChatDialog 
+                  onImportComplete={loadLeads}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Importar Chat WhatsApp
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <input
+              id="import-file-input-tablet"
+              type="file"
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            
             <Button 
               variant="outline" 
               size="icon" 
               onClick={() => navigate("/config/pipeline")}
-              className="sm:hidden"
+              title="Pipeline"
             >
               <GitBranch className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={() => navigate("/settings")}>
+            
+            <Button variant="outline" size="icon" onClick={() => navigate("/settings")} title="Configuración">
               <Settings className="h-4 w-4" />
             </Button>
+            
+            <CreateLeadDialog onLeadCreated={loadLeads} />
+          </div>
+          
+          {/* Actions - Mobile */}
+          <div className="flex sm:hidden items-center gap-2">
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={() => navigate("/bulk-first-message")}
+              className="flex-1"
+            >
+              <MessageSquarePlus className="h-4 w-4 mr-2" />
+              Primer Mensaje
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleExportLeads}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => document.getElementById('import-file-input-mobile')?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar JSON
+                </DropdownMenuItem>
+                <ImportCSVDialog 
+                  onImportComplete={loadLeads}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <FileUp className="h-4 w-4 mr-2" />
+                      Importar CSV (New Leads)
+                    </DropdownMenuItem>
+                  }
+                />
+                <ImportWhatsAppChatDialog 
+                  onImportComplete={loadLeads}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Importar Chat WhatsApp
+                    </DropdownMenuItem>
+                  }
+                />
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/config/pipeline")}>
+                  <GitBranch className="h-4 w-4 mr-2" />
+                  Configuración Pipeline
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configuración
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <input
+              id="import-file-input-mobile"
+              type="file"
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            
             <CreateLeadDialog onLeadCreated={loadLeads} />
           </div>
         </div>
