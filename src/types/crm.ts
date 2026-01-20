@@ -14,6 +14,7 @@ export interface Lead {
   nextContactDate?: string;
   nextActionNote?: string;
   smsContactStatus: SmsContactStatus;
+  isPinned?: boolean;
 }
 
 export interface PipelineState {

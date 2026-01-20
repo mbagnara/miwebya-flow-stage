@@ -224,6 +224,20 @@ export class DataRepository {
     return updatedCount;
   }
 
+  /**
+   * Toggles the pinned status of a lead
+   * @param leadId - The ID of the lead to toggle
+   * @returns The updated lead or null if not found
+   */
+  async toggleLeadPinned(leadId: string): Promise<Lead | null> {
+    const lead = await this.getLeadById(leadId);
+    if (!lead) return null;
+    
+    const updatedLead = { ...lead, isPinned: !lead.isPinned };
+    await this.updateLead(updatedLead);
+    return updatedLead;
+  }
+
   // SEED DATA
   async seedFakeData(): Promise<void> {
     const existingLeads = await this.getLeads();

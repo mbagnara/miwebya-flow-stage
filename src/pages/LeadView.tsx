@@ -18,7 +18,7 @@ import { PipelineProgress } from "@/components/PipelineProgress";
 import { ScheduleNextContactModal } from "@/components/ScheduleNextContactModal";
 import { ChangeSmsStatusModal } from "@/components/ChangeSmsStatusModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock, Pencil, MessageSquare, MessageSquareOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Phone, MapPin, Briefcase, Thermometer, Pause, Trophy, XCircle, RotateCcw, Download, CalendarClock, Pencil, MessageSquare, MessageSquareOff, Pin, PinOff } from "lucide-react";
 import { downloadLeadJSONL } from "@/lib/leadExporter";
 import { toast } from "@/hooks/use-toast";
 
@@ -357,14 +357,44 @@ const LeadView = () => {
             <ArrowLeft className="h-4 w-4" />
             Volver al Dashboard
           </Button>
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => downloadLeadJSONL(lead, interactions)}
-          >
-            <Download className="h-4 w-4" />
-            Exportar Lead
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant={lead.isPinned ? "default" : "outline"}
+              className={`gap-2 ${lead.isPinned ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+              onClick={async () => {
+                const updatedLead = await dataRepository.toggleLeadPinned(lead.id);
+                if (updatedLead) {
+                  setLead(updatedLead);
+                  toast({
+                    title: updatedLead.isPinned ? "Lead fijado 📌" : "Lead desfijado",
+                    description: updatedLead.isPinned 
+                      ? "Este lead ahora aparecerá siempre arriba en el dashboard"
+                      : "Este lead ya no aparecerá siempre arriba"
+                  });
+                }
+              }}
+            >
+              {lead.isPinned ? (
+                <>
+                  <PinOff className="h-4 w-4" />
+                  Desfijar
+                </>
+              ) : (
+                <>
+                  <Pin className="h-4 w-4" />
+                  Fijar Lead
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => downloadLeadJSONL(lead, interactions)}
+            >
+              <Download className="h-4 w-4" />
+              Exportar Lead
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
