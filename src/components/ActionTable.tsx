@@ -9,7 +9,7 @@ import { getTemperatureColor, getTemperatureLabel } from "@/lib/temperature";
 import { getLeadUrgency, getUrgencyConfig, formatShortDate } from "@/lib/urgency";
 import { getElapsedTime, isOverThreshold } from "@/lib/timeUtils";
 import { useNavigate } from "react-router-dom";
-import { Pencil, CheckCircle, AlertTriangle, MessageSquare, MessageSquareOff, UserPen, Trash2, Clock } from "lucide-react";
+import { Pencil, CheckCircle, AlertTriangle, MessageSquare, MessageSquareOff, UserPen, Trash2, Clock, Pin, PinOff } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChangeSmsStatusModal } from "@/components/ChangeSmsStatusModal";
 import { CreateLeadDialog } from "@/components/CreateLeadDialog";
@@ -27,10 +27,11 @@ import { cn } from "@/lib/utils";
 
 interface ActionTableProps {
   leads: Lead[];
+  pinnedLeads?: Lead[];
   onLeadUpdated: () => void;
 }
 
-export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
+export const ActionTable = ({ leads, pinnedLeads = [], onLeadUpdated }: ActionTableProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [smsChangingLead, setSmsChangingLead] = useState<Lead | null>(null);
@@ -38,16 +39,30 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
   const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
   const [lastInteractions, setLastInteractions] = useState<Map<string, Interaction>>(new Map());
 
+  // Combine pinned and regular leads for interaction loading
+  const allDisplayedLeads = [...pinnedLeads, ...leads];
+
   useEffect(() => {
     const loadLastInteractions = async () => {
-      const leadIds = leads.map(l => l.id);
+      const leadIds = allDisplayedLeads.map(l => l.id);
       if (leadIds.length > 0) {
         const interactions = await dataRepository.getLastInteractionsForLeads(leadIds);
         setLastInteractions(interactions);
       }
     };
     loadLastInteractions();
-  }, [leads]);
+  }, [leads, pinnedLeads]);
+
+  const handleTogglePin = async (lead: Lead) => {
+    await dataRepository.toggleLeadPinned(lead.id);
+    toast({
+      title: lead.isPinned ? "Lead desfijado" : "Lead fijado 📌",
+      description: lead.isPinned 
+        ? `"${lead.name}" ya no aparecerá siempre arriba`
+        : `"${lead.name}" ahora aparecerá siempre arriba en el dashboard`
+    });
+    onLeadUpdated();
+  };
 
   const handleSmsStatusChange = async (newStatus: SmsContactStatus, note: string) => {
     if (!smsChangingLead) return;
@@ -93,33 +108,267 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leads.length === 0 ? (
+            {allDisplayedLeads.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   No hay acciones pendientes
                 </TableCell>
               </TableRow>
             ) : (
-              leads.map((lead) => {
-                const urgency = getLeadUrgency(lead);
-                const urgencyConfig = getUrgencyConfig(urgency);
-                const state = getPipelineState(lead.pipelineState);
+              <>
+                {/* Pinned leads first */}
+                {pinnedLeads.map((lead) => {
+                  const urgency = getLeadUrgency(lead);
+                  const urgencyConfig = getUrgencyConfig(urgency);
+                  const state = getPipelineState(lead.pipelineState);
 
-                return (
-                  <TableRow key={lead.id} className="hover:bg-muted/50">
-                    {/* Columna 1: Urgencia visual */}
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <span className="text-lg">{urgencyConfig.icon}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{urgencyConfig.label}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                  return (
+                    <TableRow key={lead.id} className="bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 border-l-2 border-l-amber-500">
+                      {/* Columna 1: Urgencia visual con pin */}
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Pin className="h-4 w-4 text-amber-600 fill-amber-600" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Lead fijado - Siempre visible</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <span className="text-lg">{urgencyConfig.icon}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{urgencyConfig.label}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+
+                      {/* Columna 2: Lead (nombre + teléfono) */}
+                      <TableCell>
+                        <button
+                          onClick={() => navigate(`/lead/${lead.id}`)}
+                          className="text-left hover:underline"
+                        >
+                          <p className="font-medium text-foreground">{lead.name}</p>
+                          <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                        </button>
+                      </TableCell>
+
+                      {/* Columna 3: Tiempo transcurrido */}
+                      <TableCell>
+                        {(() => {
+                          const lastInteraction = lastInteractions.get(lead.id);
+                          if (!lastInteraction) {
+                            return <span className="text-xs text-muted-foreground">—</span>;
+                          }
+                          
+                          const elapsed = getElapsedTime(lastInteraction.createdAt);
+                          const over24h = isOverThreshold(lastInteraction.createdAt, 24);
+                          const over48h = isOverThreshold(lastInteraction.createdAt, 48);
+                          
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <div className={cn(
+                                    "flex items-center gap-1 text-xs font-mono",
+                                    over48h ? "text-red-600" : 
+                                    over24h ? "text-orange-500" : 
+                                    "text-muted-foreground"
+                                  )}>
+                                    <Clock className="h-3 w-3" />
+                                    {elapsed}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Tiempo desde última interacción</p>
+                                  {over48h && <p className="text-red-400">⚠️ Más de 48 horas sin contacto</p>}
+                                  {over24h && !over48h && <p className="text-orange-400">⏰ Más de 24 horas sin contacto</p>}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        })()}
+                      </TableCell>
+
+                      {/* Columna 4: Próxima acción */}
+                      <TableCell>
+                        {lead.nextActionNote ? (
+                          <p className="text-sm text-foreground truncate max-w-[200px]" title={lead.nextActionNote}>
+                            {lead.nextActionNote}
+                          </p>
+                        ) : (
+                          <span className="flex items-center gap-1 text-sm text-destructive">
+                            <AlertTriangle className="h-3 w-3" />
+                            Sin acción definida
+                          </span>
+                        )}
+                      </TableCell>
+
+                      {/* Columna 5: Fecha */}
+                      <TableCell>
+                        <span className={`text-sm ${urgencyConfig.color}`}>
+                          {formatShortDate(lead.nextContactDate)}
+                        </span>
+                      </TableCell>
+
+                      {/* Columna 6: Acción rápida */}
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <DropdownMenu>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Editar / Eliminar lead</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent align="start" className="bg-popover">
+                              <DropdownMenuItem onClick={() => handleTogglePin(lead)}>
+                                <PinOff className="h-4 w-4 mr-2" />
+                                Desfijar lead
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setEditingLead(lead)}>
+                                <UserPen className="h-4 w-4 mr-2" />
+                                Editar datos del lead
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeletingLead(lead)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Eliminar lead
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => navigate(`/lead/${lead.id}`)}
+                                >
+                                  <CheckCircle className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Ver lead / Completar acción</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+
+                      {/* Columna 7: Estado */}
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {state?.name || lead.pipelineState}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Columna 8: SMS */}
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${
+                              lead.smsContactStatus === "activo" 
+                                ? "bg-green-500/10 text-green-600 border-green-500/30" 
+                                : "bg-destructive/10 text-destructive border-destructive/30"
+                            }`}
+                          >
+                            {lead.smsContactStatus === "activo" ? (
+                              <><MessageSquare className="h-3 w-3 mr-1" />Activo</>
+                            ) : (
+                              <><MessageSquareOff className="h-3 w-3 mr-1" />Bloq.</>
+                            )}
+                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => setSmsChangingLead(lead)}
+                                >
+                                  {lead.smsContactStatus === "activo" ? (
+                                    <MessageSquareOff className="h-3 w-3 text-muted-foreground" />
+                                  ) : (
+                                    <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{lead.smsContactStatus === "activo" ? "Bloquear SMS" : "Activar SMS"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+
+                      {/* Columna 9: Temperatura */}
+                      <TableCell>
+                        <Badge variant="outline" className={`text-xs ${getTemperatureColor(lead.temperature)}`}>
+                          {getTemperatureLabel(lead.temperature)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+
+                {/* Separator between pinned and regular leads */}
+                {pinnedLeads.length > 0 && leads.length > 0 && (
+                  <TableRow className="border-b-2 border-dashed border-amber-300 dark:border-amber-700">
+                    <TableCell colSpan={9} className="py-1 bg-muted/30">
+                      <span className="text-xs text-muted-foreground italic">— Leads regulares —</span>
                     </TableCell>
+                  </TableRow>
+                )}
+
+                {/* Regular leads */}
+                {leads.map((lead) => {
+                  const urgency = getLeadUrgency(lead);
+                  const urgencyConfig = getUrgencyConfig(urgency);
+                  const state = getPipelineState(lead.pipelineState);
+
+                  return (
+                    <TableRow key={lead.id} className="hover:bg-muted/50">
+                      {/* Columna 1: Urgencia visual */}
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <span className="text-lg">{urgencyConfig.icon}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{urgencyConfig.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
 
                     {/* Columna 2: Lead (nombre + teléfono) */}
                     <TableCell>
@@ -212,20 +461,25 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          <DropdownMenuContent align="start" className="bg-popover">
-                            <DropdownMenuItem onClick={() => setEditingLead(lead)}>
-                              <UserPen className="h-4 w-4 mr-2" />
-                              Editar datos del lead
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setDeletingLead(lead)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Eliminar lead
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                            <DropdownMenuContent align="start" className="bg-popover">
+                              <DropdownMenuItem onClick={() => handleTogglePin(lead)}>
+                                <Pin className="h-4 w-4 mr-2" />
+                                Fijar lead 📌
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setEditingLead(lead)}>
+                                <UserPen className="h-4 w-4 mr-2" />
+                                Editar datos del lead
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeletingLead(lead)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Eliminar lead
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
                         </DropdownMenu>
                         <TooltipProvider>
                           <Tooltip>
@@ -301,9 +555,10 @@ export const ActionTable = ({ leads, onLeadUpdated }: ActionTableProps) => {
                         {getTemperatureLabel(lead.temperature)}
                       </Badge>
                     </TableCell>
-                  </TableRow>
-                );
-              })
+                    </TableRow>
+                  );
+                })}
+              </>
             )}
           </TableBody>
         </Table>

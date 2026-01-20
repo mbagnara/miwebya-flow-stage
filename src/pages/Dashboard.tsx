@@ -173,8 +173,27 @@ const Dashboard = () => {
     return filteredLeads;
   }, [phoneFilteredLeads, filteredLeads]);
 
-  // Paginación
-  const totalLeads = finalLeads.length;
+  // Separate pinned leads from regular leads (pinned leads bypass filters except phone search and blocked filter)
+  const { pinnedLeadsForDisplay, regularLeadsForDisplay } = useMemo(() => {
+    // If phone search is active, don't separate pinned - show all matches
+    if (phoneFilteredLeads !== null) {
+      return { pinnedLeadsForDisplay: [], regularLeadsForDisplay: finalLeads };
+    }
+    
+    // Get all pinned leads (respecting blocked filter only)
+    const allPinnedLeads = blockedFilteredLeads.filter(lead => lead.isPinned);
+    
+    // Regular leads are the filtered ones without pinned ones
+    const regularLeads = finalLeads.filter(lead => !lead.isPinned);
+    
+    return { 
+      pinnedLeadsForDisplay: allPinnedLeads, 
+      regularLeadsForDisplay: regularLeads 
+    };
+  }, [finalLeads, phoneFilteredLeads, blockedFilteredLeads]);
+
+  // Paginación (solo para leads regulares, los fijados siempre se muestran)
+  const totalLeads = regularLeadsForDisplay.length;
   const totalLeadsWithoutDateFilter = leads.filter(lead => {
     const matchesTemperature = temperatureFilter === "all" || lead.temperature === temperatureFilter;
     const matchesState = stateFilter === "all" || lead.pipelineState === stateFilter;
@@ -183,7 +202,7 @@ const Dashboard = () => {
   const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(totalLeads / itemsPerPage);
   const startIndex = itemsPerPage === -1 ? 0 : (currentPage - 1) * itemsPerPage;
   const endIndex = itemsPerPage === -1 ? totalLeads : startIndex + itemsPerPage;
-  const paginatedLeads = finalLeads.slice(startIndex, endIndex);
+  const paginatedLeads = regularLeadsForDisplay.slice(startIndex, endIndex);
 
   // Reset a página 1 cuando cambia el filtro
   useEffect(() => {
@@ -722,6 +741,11 @@ const Dashboard = () => {
         {/* Contador y selector de paginación */}
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-muted-foreground">
+            {pinnedLeadsForDisplay.length > 0 && (
+              <span className="text-amber-600 font-medium mr-2">
+                📌 {pinnedLeadsForDisplay.length} fijado{pinnedLeadsForDisplay.length > 1 ? "s" : ""} +
+              </span>
+            )}
             Mostrando <span className="font-semibold text-foreground">{paginatedLeads.length}</span> de{" "}
             <span className="font-semibold text-foreground">{totalLeads}</span> acciones pendientes
             {(dateFilterMode !== "all" || actionFilter !== "all") && (
@@ -780,7 +804,11 @@ const Dashboard = () => {
             Cargando acciones pendientes...
           </div>
         ) : (
-          <ActionTable leads={paginatedLeads} onLeadUpdated={loadLeads} />
+          <ActionTable 
+            leads={paginatedLeads} 
+            pinnedLeads={pinnedLeadsForDisplay}
+            onLeadUpdated={loadLeads} 
+          />
         )}
 
         {/* CAPA 4: Pipeline Overview (movido abajo) */}
