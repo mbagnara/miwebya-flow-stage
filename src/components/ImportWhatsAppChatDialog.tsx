@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -17,16 +17,28 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare, Phone, Calendar, User, ArrowDownLeft, ArrowUpRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { dataRepository } from "@/lib/DataRepository";
-import { parseWhatsAppChat, normalizePhone, ParsedChat } from "@/lib/whatsappParser";
+import { parseWhatsAppChat, normalizePhone, ParsedChat, ParsedMessage } from "@/lib/whatsappParser";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { Lead } from "@/types/crm";
+import { Lead, Interaction } from "@/types/crm";
 
 interface ImportWhatsAppChatDialogProps {
   onImportComplete: () => void;
   trigger?: React.ReactNode;
 }
+
+// Helper to check if a message is a duplicate
+const isDuplicateMessage = (msg: ParsedMessage, existingInteractions: Interaction[]): boolean => {
+  return existingInteractions.some(existing => {
+    const timeDiff = Math.abs(
+      new Date(existing.createdAt).getTime() - msg.timestamp.getTime()
+    );
+    const sameContent = existing.message.trim() === msg.message.trim();
+    const sameDirection = existing.direction === (msg.isFromLead ? "incoming" : "outgoing");
+    return timeDiff < 60000 && sameContent && sameDirection; // 1 minute tolerance
+  });
+};
 
 export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWhatsAppChatDialogProps) {
   const navigate = useNavigate();
@@ -36,6 +48,9 @@ export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWh
   const [businessType, setBusinessType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingLead, setExistingLead] = useState<Lead | null>(null);
+  const [duplicateCount, setDuplicateCount] = useState(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [newMessages, setNewMessages] = useState<ParsedMessage[]>([]);
 
   const parsedChat = useMemo(() => {
     if (!chatText.trim()) return null;
@@ -43,10 +58,13 @@ export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWh
   }, [chatText]);
 
   // Check if lead already exists when we have a parsed phone
-  useMemo(() => {
+  useEffect(() => {
     const checkExistingLead = async () => {
       if (!parsedChat?.leadPhone) {
         setExistingLead(null);
+        setDuplicateCount(0);
+        setNewMessagesCount(0);
+        setNewMessages([]);
         return;
       }
       
@@ -56,26 +74,55 @@ export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWh
         normalizePhone(lead.phone) === normalizedParsedPhone
       );
       setExistingLead(existing || null);
+
+      // Check for duplicates if lead exists
+      if (existing) {
+        const existingInteractions = await dataRepository.getInteractionsForLead(existing.id);
+        
+        const filteredNewMessages: ParsedMessage[] = [];
+        let duplicates = 0;
+        
+        for (const msg of parsedChat.messages) {
+          if (isDuplicateMessage(msg, existingInteractions)) {
+            duplicates++;
+          } else {
+            filteredNewMessages.push(msg);
+          }
+        }
+        
+        setDuplicateCount(duplicates);
+        setNewMessagesCount(filteredNewMessages.length);
+        setNewMessages(filteredNewMessages);
+      } else {
+        setDuplicateCount(0);
+        setNewMessagesCount(parsedChat.messages.length);
+        setNewMessages(parsedChat.messages);
+      }
     };
     checkExistingLead();
-  }, [parsedChat?.leadPhone]);
+  }, [parsedChat?.leadPhone, parsedChat?.messages]);
 
   const handleImport = async () => {
     if (!parsedChat) return;
+
+    const messagesToImport = existingLead ? newMessages : parsedChat.messages;
+    
+    if (messagesToImport.length === 0) {
+      toast({
+        title: "Sin mensajes nuevos",
+        description: "Todos los mensajes ya existen en este lead",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       let leadId: string;
       
       if (existingLead) {
-        // Use existing lead
         leadId = existingLead.id;
-        toast({
-          title: "Lead existente encontrado",
-          description: `Se agregarán ${parsedChat.messages.length} interacciones a "${existingLead.name}"`
-        });
       } else {
-        // Create new lead
         const newLead: Lead = {
           id: crypto.randomUUID(),
           name: leadName.trim() || parsedChat.leadPhone,
@@ -92,8 +139,8 @@ export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWh
         leadId = newLead.id;
       }
 
-      // Create all interactions
-      for (const msg of parsedChat.messages) {
+      // Create only new interactions
+      for (const msg of messagesToImport) {
         await dataRepository.addInteraction({
           id: crypto.randomUUID(),
           leadId,
@@ -103,9 +150,10 @@ export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWh
         });
       }
 
+      const duplicateInfo = duplicateCount > 0 ? ` (${duplicateCount} duplicados omitidos)` : "";
       toast({
         title: "Importación exitosa",
-        description: `Se ${existingLead ? 'agregaron' : 'creó el lead con'} ${parsedChat.messages.length} interacciones`
+        description: `Se ${existingLead ? 'agregaron' : 'creó el lead con'} ${messagesToImport.length} interacciones${duplicateInfo}`
       });
 
       // Reset and close
@@ -115,7 +163,6 @@ export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWh
       setOpen(false);
       onImportComplete();
       
-      // Navigate to the lead page
       navigate(`/lead/${leadId}`);
     } catch (error) {
       console.error("Error importing WhatsApp chat:", error);
@@ -206,15 +253,26 @@ Ejemplo:
                 </div>
               </div>
 
-              {/* Existing lead warning */}
+              {/* Existing lead info with duplicate detection */}
               {existingLead && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-amber-700">Lead existente encontrado</p>
-                    <p className="text-muted-foreground">
-                      "{existingLead.name}" ya tiene este teléfono. Las interacciones se agregarán a este lead.
-                    </p>
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-amber-700">Lead existente: "{existingLead.name}"</p>
+                      <div className="mt-2 space-y-1 text-muted-foreground">
+                        <p className="flex items-center gap-2">
+                          <span className="text-green-600 font-medium">{newMessagesCount}</span> 
+                          mensajes nuevos a agregar
+                        </p>
+                        {duplicateCount > 0 && (
+                          <p className="flex items-center gap-2">
+                            <span className="text-orange-600 font-medium">{duplicateCount}</span> 
+                            mensajes duplicados (serán omitidos)
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
