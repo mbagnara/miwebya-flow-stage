@@ -204,6 +204,26 @@ export class DataRepository {
     localStorage.removeItem(INTERACTIONS_KEY);
   }
 
+  /**
+   * Updates multiple leads at once (for bulk operations like phone formatting)
+   * @param updates - Array of objects with leadId and partial lead data to update
+   */
+  async updateMultipleLeads(updates: Array<{ leadId: string; data: Partial<Lead> }>): Promise<number> {
+    const leads = await this.getLeads();
+    let updatedCount = 0;
+
+    for (const update of updates) {
+      const index = leads.findIndex(lead => lead.id === update.leadId);
+      if (index !== -1) {
+        leads[index] = { ...leads[index], ...update.data };
+        updatedCount++;
+      }
+    }
+
+    localStorage.setItem(LEADS_KEY, JSON.stringify(leads));
+    return updatedCount;
+  }
+
   // SEED DATA
   async seedFakeData(): Promise<void> {
     const existingLeads = await this.getLeads();
