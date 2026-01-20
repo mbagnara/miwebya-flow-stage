@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Phone, Calendar, User, ArrowDownLeft, ArrowUpRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { dataRepository } from "@/lib/DataRepository";
@@ -29,6 +29,7 @@ interface ImportWhatsAppChatDialogProps {
 }
 
 export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWhatsAppChatDialogProps) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [chatText, setChatText] = useState("");
   const [leadName, setLeadName] = useState("");
@@ -113,6 +114,9 @@ export function ImportWhatsAppChatDialog({ onImportComplete, trigger }: ImportWh
       setBusinessType("");
       setOpen(false);
       onImportComplete();
+      
+      // Navigate to the lead page
+      navigate(`/lead/${leadId}`);
     } catch (error) {
       console.error("Error importing WhatsApp chat:", error);
       toast({
